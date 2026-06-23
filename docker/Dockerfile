@@ -1,0 +1,15 @@
+FROM eclipse-temurin:21-jre
+
+WORKDIR /opt/minevoice
+
+COPY standalone-server/build/install/standalone-server/ ./
+
+EXPOSE 24454/udp
+
+ENV MINEVOICE_BIND_HOST=0.0.0.0
+ENV MINEVOICE_BIND_PORT=24454
+ENV MINEVOICE_MAX_PLAYERS=100
+ENV MINEVOICE_ENABLE_BANDWIDTH_STATS=true
+ENV MINEVOICE_ENABLE_DEBUG_LOG=false
+
+CMD ["bin/standalone-server"]

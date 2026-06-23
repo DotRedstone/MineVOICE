@@ -1,0 +1,27 @@
+# Gradle caches and generated build outputs
+.gradle/
+build/
+**/build/
+
+# NeoForge development runtime and local test worlds
+minecraft-neoforge/run/
+scripts/local-demo/
+
+# IDE and operating system files
+.idea/
+.vscode/
+*.iml
+*.hprof
+hs_err_pid*.log
+
+# Local logs and packaged artifacts
+*.log
+*.log.gz
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.zip
+*.tar
+*.class
+
+# Local release staging
+release-assets/

@@ -1,0 +1,215 @@
+package dev.minevoice.neoforge;
+
+import dev.minevoice.common.config.VoiceConstants;
+import dev.minevoice.neoforge.config.MineVoiceModConfig;
+import dev.minevoice.neoforge.config.MineVoiceModConfigLoader;
+import dev.minevoice.neoforge.network.MineVoicePayloads;
+import dev.minevoice.neoforge.server.IntegratedVoiceServerManager;
+import dev.minevoice.neoforge.server.PlayerVoiceStateManager;
+import dev.minevoice.neoforge.server.VoiceGroup;
+import dev.minevoice.neoforge.server.VoiceGroupManager;
+import dev.minevoice.neoforge.server.VoiceServerInfoSender;
+import dev.minevoice.neoforge.server.VoiceStatePublisher;
+import dev.minevoice.neoforge.server.VoiceTokenService;
+import dev.minevoice.neoforge.network.VoiceGroupAction;
+import dev.minevoice.neoforge.network.VoiceGroupActionPayload;
+import dev.minevoice.neoforge.network.VoicePlayerStatusPayload;
+import dev.minevoice.neoforge.network.VoiceRosterEntry;
+import dev.minevoice.neoforge.network.VoiceRosterPayload;
+import dev.minevoice.neoforge.network.VoiceServerInfoPayload;
+import dev.minevoice.common.auth.AuthToken;
+import dev.minevoice.common.auth.AuthTokenCodec;
+import dev.minevoice.common.protocol.VoiceProtocolVersion;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.util.List;
+
+@Mod(MineVoiceMod.MOD_ID)
+public final class MineVoiceMod {
+    public static final String MOD_ID = VoiceConstants.MOD_ID;
+    public static final Logger LOGGER = LoggerFactory.getLogger(VoiceConstants.PROJECT_NAME);
+    private static MineVoiceMod instance;
+
+    private MineVoiceModConfig config = MineVoiceModConfig.localDefaults();
+    private IntegratedVoiceServerManager integratedVoiceServerManager = new IntegratedVoiceServerManager(config);
+    private VoiceTokenService voiceTokenService = new VoiceTokenService(config.sharedSecret());
+    private final VoiceServerInfoSender voiceServerInfoSender = new VoiceServerInfoSender();
+    private final PlayerVoiceStateManager playerVoiceStates = new PlayerVoiceStateManager();
+    private final VoiceGroupManager voiceGroupManager = new VoiceGroupManager();
+    private final VoiceStatePublisher voiceStatePublisher = new VoiceStatePublisher();
+    private int stateSyncTicks;
+
+    public MineVoiceMod(IEventBus modEventBus, ModContainer modContainer) {
+        instance = this;
+        modEventBus.addListener(MineVoicePayloads::register);
+        NeoForge.EVENT_BUS.register(this);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            registerClient(modEventBus, modContainer);
+        }
+        LOGGER.info("{} loaded", VoiceConstants.DISPLAY_NAME);
+    }
+
+    private static void registerClient(IEventBus modEventBus, ModContainer modContainer) {
+        try {
+            Class<?> bootstrap = Class.forName("dev.minevoice.neoforge.client.MineVoiceClientBootstrap");
+            bootstrap.getMethod("register", IEventBus.class, ModContainer.class).invoke(null, modEventBus, modContainer);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("failed to register MineVOICE client bootstrap", exception);
+        }
+    }
+
+    @SubscribeEvent
+    public void onServerStarting(ServerStartingEvent event) {
+        reloadServerConfig();
+        voiceGroupManager.clear();
+        stateSyncTicks = 0;
+        if (config.mode().name().equals("LOCAL")) {
+            integratedVoiceServerManager.start();
+        }
+    }
+
+    @SubscribeEvent
+    public void onServerStopping(ServerStoppingEvent event) {
+        integratedVoiceServerManager.stop();
+    }
+
+    @SubscribeEvent
+    public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        playerVoiceStates.markConnected(player.getUUID());
+        AuthToken token = voiceTokenService.issue(player.getUUID(), "minevoice-local", Duration.ofMinutes(5));
+        String host = config.mode().name().equals("LOCAL")
+                ? resolveAdvertiseHost()
+                : config.remoteVoiceHost();
+        int port = config.mode().name().equals("LOCAL")
+                ? config.advertisePort()
+                : config.remoteVoicePort();
+
+        voiceServerInfoSender.sendToPlayer(player, new VoiceServerInfoPayload(
+                config.mode(),
+                host,
+                port,
+                AuthTokenCodec.encodeToString(token),
+                VoiceProtocolVersion.CURRENT
+        ));
+        broadcastVoiceRoster();
+        publishVoiceState(player.server);
+    }
+
+    @SubscribeEvent
+    public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        playerVoiceStates.markDisconnected(player.getUUID());
+        voiceGroupManager.leave(player.getUUID());
+        broadcastVoiceRoster();
+        publishVoiceState(player.server);
+    }
+
+    @SubscribeEvent
+    public void onServerTick(ServerTickEvent.Post event) {
+        stateSyncTicks++;
+        if (stateSyncTicks >= 20) {
+            stateSyncTicks = 0;
+            publishVoiceState(event.getServer());
+        }
+    }
+
+    public static void handleGroupAction(ServerPlayer player, VoiceGroupActionPayload payload) {
+        if (instance != null) {
+            instance.applyGroupAction(player, payload);
+        }
+    }
+
+    public static void handlePlayerStatus(ServerPlayer player, VoicePlayerStatusPayload payload) {
+        if (instance != null) {
+            instance.playerVoiceStates.setMuted(player.getUUID(), payload.muted());
+            instance.broadcastVoiceRoster();
+            instance.publishVoiceState(player.server);
+        }
+    }
+
+    private void applyGroupAction(ServerPlayer player, VoiceGroupActionPayload payload) {
+        try {
+            switch (payload.action()) {
+                case CREATE -> voiceGroupManager.create(player.getUUID(), payload.groupName());
+                case JOIN -> {
+                    if (payload.groupId() == null || !voiceGroupManager.join(player.getUUID(), payload.groupId())) {
+                        player.displayClientMessage(Component.literal("MineVOICE: group is no longer available"), true);
+                        return;
+                    }
+                }
+                case LEAVE -> voiceGroupManager.leave(player.getUUID());
+            }
+            broadcastVoiceRoster();
+            publishVoiceState(player.server);
+        } catch (IllegalArgumentException exception) {
+            player.displayClientMessage(Component.literal("MineVOICE: " + exception.getMessage()), true);
+        }
+    }
+
+    private void broadcastVoiceRoster() {
+        net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        List<VoiceRosterEntry> entries = server.getPlayerList().getPlayers().stream()
+                .map(player -> rosterEntry(player))
+                .toList();
+        PacketDistributor.sendToAllPlayers(new VoiceRosterPayload(entries));
+    }
+
+    private VoiceRosterEntry rosterEntry(ServerPlayer player) {
+        VoiceGroup group = voiceGroupManager.groupFor(player.getUUID());
+        return new VoiceRosterEntry(
+                player.getUUID(),
+                player.getGameProfile().getName(),
+                group == null ? null : group.id(),
+                group == null ? "" : group.name(),
+                playerVoiceStates.muted(player.getUUID())
+        );
+    }
+
+    private void publishVoiceState(net.minecraft.server.MinecraftServer server) {
+        try {
+            voiceStatePublisher.publish(server, config, voiceGroupManager, playerVoiceStates);
+        } catch (RuntimeException exception) {
+            LOGGER.warn("failed to publish MineVOICE player state: {}", exception.getMessage());
+        }
+    }
+
+    private String resolveAdvertiseHost() {
+        return "auto".equalsIgnoreCase(config.advertiseHost()) ? "127.0.0.1" : config.advertiseHost();
+    }
+
+    private void reloadServerConfig() {
+        config = new MineVoiceModConfigLoader().load(FMLPaths.CONFIGDIR.get().resolve("minevoice-server.properties"));
+        integratedVoiceServerManager = new IntegratedVoiceServerManager(config);
+        voiceTokenService = new VoiceTokenService(config.sharedSecret());
+        String endpoint = config.mode().name().equals("REMOTE")
+                ? config.remoteVoiceHost() + ":" + config.remoteVoicePort()
+                : resolveAdvertiseHost() + ":" + config.advertisePort();
+        LOGGER.info("MineVOICE server config loaded: mode={}, endpoint={}", config.mode(), endpoint);
+    }
+}

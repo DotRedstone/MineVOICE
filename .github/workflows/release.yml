@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags, e.g., v0.1
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Prepare Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Resolve release metadata
+        id: release
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$version" =~ -(alpha|beta|rc)([.-]|$) ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run release safety check
+        run: bash scripts/pre-release-check.sh
+
+      - name: Build release artifacts
+        run: >-
+          ./gradlew --no-daemon -Pmod_version=${{ steps.release.outputs.version }} clean
+          :minecraft-neoforge:build :standalone-server:distZip :standalone-server:installDist
+
+      - name: Stage deployment packages
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          mkdir -p release-assets
+          cp "minecraft-neoforge/build/libs/minevoice-neoforge-$VERSION.jar" \
+            "release-assets/MineVOICE-NeoForge-1.21.1-$VERSION.jar"
+          cp "standalone-server/build/distributions/standalone-server-$VERSION.zip" \
+            "release-assets/MineVOICE-Voice-Server-$VERSION.zip"
+
+      - name: Publish Docker image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/minevoice-server
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          image="$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -t "$image:$VERSION" -f docker/Dockerfile .
+          docker push "$image:$VERSION"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MineVOICE ${{ github.ref_name }}
+          body: |
+            ## 部署包
+
+            - `MineVOICE-NeoForge-1.21.1-${{ steps.release.outputs.version }}.jar`：同一个 NeoForge 模组文件，客户端和 Minecraft 服务端都安装它。
+            - `MineVOICE-Voice-Server-${{ steps.release.outputs.version }}.zip`：独立语音服务器核心，仅 Remote 模式需要部署。
+
+            ## 安装
+
+            1. 将 NeoForge 模组 jar 放入 Minecraft 服务端和所有客户端的 `mods` 目录。
+            2. 解压并启动独立语音服务器 zip，配置与 Minecraft 服务端一致的 `sharedSecret`。
+            3. 放行独立语音服务器 UDP 端口，玩家进服后会自动建立语音连接。
+
+            `Source code (zip)` 与 `Source code (tar.gz)` 是 GitHub 自动生成的源码归档，不是安装包。
+          files: |
+            release-assets/*
+          fail_on_unmatched_files: true
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          generate_release_notes: false

@@ -1,0 +1,17 @@
+plugins {
+    id "java-library"
+}
+
+dependencies {
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.11.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("test", Test).configure {
+    // Gradle's Windows test worker cannot resolve the Unicode workspace path here.
+    // GitHub Actions runs this task on Linux, where the full JUnit suite remains enabled.
+    onlyIf {
+        !System.getProperty("os.name").toLowerCase().contains("windows")
+    }
+}
