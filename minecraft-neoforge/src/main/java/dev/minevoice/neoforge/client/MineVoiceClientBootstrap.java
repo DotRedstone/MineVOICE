@@ -167,4 +167,12 @@ public final class MineVoiceClientBootstrap {
     public static void applyPushToTalkBinding(String configuredKey) {
         KEYBIND_MANAGER.applyPushToTalkBinding(configuredKey);
     }
+
+    public static void suspendAudioForDeviceTest() {
+        VOICE_CONNECTION_MANAGER.suspendAudioForDeviceTest();
+    }
+
+    public static void resumeAudioAfterDeviceTest() {
+        VOICE_CONNECTION_MANAGER.resumeAudioAfterDeviceTest();
+    }
 }

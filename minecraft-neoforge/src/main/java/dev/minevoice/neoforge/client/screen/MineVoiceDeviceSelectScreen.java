@@ -77,24 +77,18 @@ public final class MineVoiceDeviceSelectScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int left = panelLeft();
         int top = panelTop();
-        graphics.drawCenteredString(font, title, left + PANEL_WIDTH / 2, top + 10, 0xFFFFFFFF);
+        graphics.drawCenteredString(font, title, left + PANEL_WIDTH / 2, top + 10, 0xFF404040);
         if (pageCount() > 1) {
             graphics.drawString(font, Component.translatable("screen.minevoice.device.page", page + 1, pageCount()),
-                    left + 168, top + PANEL_HEIGHT - 22, 0xFFA0A0A0);
+                    left + 168, top + PANEL_HEIGHT - 22, 0xFF606060);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int padding = 8;
-        renderMenuBackground(
-                graphics,
-                panelLeft() - padding,
-                panelTop() - padding,
-                PANEL_WIDTH + padding * 2,
-                PANEL_HEIGHT + padding * 2
-        );
+        renderTransparentBackground(graphics);
+        MineVoicePanelStyle.render(graphics, panelLeft(), panelTop(), PANEL_WIDTH, PANEL_HEIGHT);
     }
 
     @Override

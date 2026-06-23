@@ -79,20 +79,14 @@ public final class MineVoiceMenuScreen extends Screen {
         int top = panelTop();
         Minecraft minecraft = Minecraft.getInstance();
         Component title = Component.literal("MineVOICE");
-        graphics.drawCenteredString(minecraft.font, title, left + PANEL_WIDTH / 2, top + 7, 0xFFFFFFFF);
+        graphics.drawCenteredString(minecraft.font, title, left + PANEL_WIDTH / 2, top + 7, 0xFF404040);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int padding = 8;
-        renderMenuBackground(
-                graphics,
-                panelLeft() - padding,
-                panelTop() - padding,
-                PANEL_WIDTH + padding * 2,
-                PANEL_HEIGHT + padding * 2
-        );
+        renderTransparentBackground(graphics);
+        MineVoicePanelStyle.render(graphics, panelLeft(), panelTop(), PANEL_WIDTH, PANEL_HEIGHT);
     }
 
     @Override

@@ -45,6 +45,8 @@ public final class JavaSoundVoiceAudioPipeline {
     private final AtomicBoolean groupPushToTalkDown = new AtomicBoolean();
     private Thread captureThread;
     private Thread playbackThread;
+    private volatile TargetDataLine activeCaptureLine;
+    private volatile SourceDataLine activePlaybackLine;
     private long sequence;
 
     public JavaSoundVoiceAudioPipeline(
@@ -81,6 +83,8 @@ public final class JavaSoundVoiceAudioPipeline {
         if (playbackThread != null) {
             playbackThread.interrupt();
         }
+        closeLine(activeCaptureLine);
+        closeLine(activePlaybackLine);
         playbackQueue.clear();
     }
 
@@ -100,6 +104,7 @@ public final class JavaSoundVoiceAudioPipeline {
         while (running.get()) {
             ClientAudioSettings settings = settingsSupplier.get();
             try (TargetDataLine line = openTargetLine(settings)) {
+                activeCaptureLine = line;
                 line.start();
                 byte[] pcm = new byte[FRAME_BYTES];
                 while (running.get() && sameCaptureDevice(settings)) {
@@ -118,6 +123,8 @@ public final class JavaSoundVoiceAudioPipeline {
                 }
             } catch (RuntimeException exception) {
                 sleepQuietly(1_000L);
+            } finally {
+                activeCaptureLine = null;
             }
         }
     }
@@ -127,6 +134,7 @@ public final class JavaSoundVoiceAudioPipeline {
         while (running.get()) {
             ClientAudioSettings settings = settingsSupplier.get();
             try (SourceDataLine line = openSourceLine(settings)) {
+                activePlaybackLine = line;
                 line.start();
                 long nextMixAt = System.nanoTime();
                 while (running.get() && samePlaybackDevice(settings)) {
@@ -165,6 +173,8 @@ public final class JavaSoundVoiceAudioPipeline {
                 Thread.currentThread().interrupt();
             } catch (RuntimeException exception) {
                 sleepQuietly(1_000L);
+            } finally {
+                activePlaybackLine = null;
             }
         }
     }
@@ -228,6 +238,13 @@ public final class JavaSoundVoiceAudioPipeline {
             int scaled = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, Math.round(sample * clamped)));
             pcm[index] = (byte) (scaled & 0xFF);
             pcm[index + 1] = (byte) ((scaled >>> 8) & 0xFF);
+        }
+    }
+
+    private static void closeLine(DataLine line) {
+        if (line != null) {
+            line.stop();
+            line.close();
         }
     }
 

@@ -29,6 +29,7 @@ public final class ClientVoiceConnectionManager {
     private final VoiceSpeakerTracker speakerTracker = new VoiceSpeakerTracker();
     private final MinecraftVoiceSpatializer spatializer = new MinecraftVoiceSpatializer();
     private final AtomicBoolean running = new AtomicBoolean();
+    private final Object audioPipelineLock = new Object();
     private volatile VoiceConnectionStatus status = VoiceConnectionStatus.DISCONNECTED;
     private DatagramSocket socket;
     private InetAddress serverAddress;
@@ -37,7 +38,7 @@ public final class ClientVoiceConnectionManager {
     private UUID playerId;
     private final AtomicLong sequence = new AtomicLong();
     private Thread receiveThread;
-    private JavaSoundVoiceAudioPipeline audioPipeline;
+    private volatile JavaSoundVoiceAudioPipeline audioPipeline;
 
     public ClientVoiceConnectionManager(ClientSettingsStore settingsStore) {
         this.settingsStore = settingsStore;
@@ -65,14 +66,7 @@ public final class ClientVoiceConnectionManager {
 
             running.set(true);
             setStatus(VoiceConnectionStatus.CONNECTED);
-            audioPipeline = new JavaSoundVoiceAudioPipeline(
-                    playerId,
-                    settingsStore::load,
-                    this::sendFrame,
-                    hudState::setMicrophoneActivity,
-                    spatializer
-            );
-            audioPipeline.start();
+            resumeAudioAfterDeviceTest();
             receiveThread = new Thread(this::receiveLoop, "minevoice-udp-receive");
             receiveThread.setDaemon(true);
             receiveThread.start();
@@ -96,8 +90,9 @@ public final class ClientVoiceConnectionManager {
 
     public void setPushToTalkDown(boolean pressed) {
         hudState.setPushToTalkDown(pressed);
-        if (audioPipeline != null) {
-            audioPipeline.setPushToTalkDown(pressed);
+        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        if (pipeline != null) {
+            pipeline.setPushToTalkDown(pressed);
         }
     }
 
@@ -111,16 +106,38 @@ public final class ClientVoiceConnectionManager {
         } else if (!hudState.pushToTalkDown()) {
             hudState.setActiveChannel(dev.minevoice.common.protocol.VoiceChannel.PROXIMITY);
         }
-        if (audioPipeline != null) {
-            audioPipeline.setGroupPushToTalkDown(pressed);
+        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        if (pipeline != null) {
+            pipeline.setGroupPushToTalkDown(pressed);
+        }
+    }
+
+    public void suspendAudioForDeviceTest() {
+        synchronized (audioPipelineLock) {
+            stopAudioPipeline();
+        }
+    }
+
+    public void resumeAudioAfterDeviceTest() {
+        synchronized (audioPipelineLock) {
+            if (!running.get() || audioPipeline != null || playerId == null) {
+                return;
+            }
+            audioPipeline = new JavaSoundVoiceAudioPipeline(
+                    playerId,
+                    settingsStore::load,
+                    this::sendFrame,
+                    hudState::setMicrophoneActivity,
+                    spatializer
+            );
+            audioPipeline.start();
         }
     }
 
     public void disconnect() {
         running.set(false);
-        if (audioPipeline != null) {
-            audioPipeline.stop();
-            audioPipeline = null;
+        synchronized (audioPipelineLock) {
+            stopAudioPipeline();
         }
         closeSocket();
         setStatus(VoiceConnectionStatus.DISCONNECTED);
@@ -141,10 +158,11 @@ public final class ClientVoiceConnectionManager {
                 if (packet == null) {
                     continue;
                 }
-                if (packet.packetType() == VoicePacketType.VOICE_FRAME && audioPipeline != null && packet.payload().length > 0) {
+                JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+                if (packet.packetType() == VoicePacketType.VOICE_FRAME && pipeline != null && packet.payload().length > 0) {
                     VoiceFrame frame = VoiceFramePayloadCodec.decode(packet.payload());
                     speakerTracker.markSpeaking(frame.senderPlayerId());
-                    audioPipeline.enqueuePlayback(frame);
+                    pipeline.enqueuePlayback(frame);
                 }
                 if (packet.packetType() == VoicePacketType.AUTH_FAILED || packet.packetType() == VoicePacketType.DISCONNECT) {
                     setStatus(VoiceConnectionStatus.AUTH_FAILED);
@@ -186,6 +204,14 @@ public final class ClientVoiceConnectionManager {
         if (socket != null) {
             socket.close();
             socket = null;
+        }
+    }
+
+    private void stopAudioPipeline() {
+        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        audioPipeline = null;
+        if (pipeline != null) {
+            pipeline.stop();
         }
     }
 

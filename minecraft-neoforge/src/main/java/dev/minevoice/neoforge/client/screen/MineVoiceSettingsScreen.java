@@ -20,7 +20,7 @@ import java.util.function.Consumer;
 
 public final class MineVoiceSettingsScreen extends Screen {
     private static final int PANEL_MAX_WIDTH = 248;
-    private static final int PANEL_MAX_HEIGHT = 220;
+    private static final int PANEL_MAX_HEIGHT = 240;
     private static final int ROW_HEIGHT = 20;
 
     private final Screen parent;
@@ -31,7 +31,11 @@ public final class MineVoiceSettingsScreen extends Screen {
 
     private SettingsTab selectedTab = SettingsTab.AUDIO;
     private EditBox pushToTalkKey;
-    private volatile Component deviceTestStatus;
+    private Button microphoneTestButton;
+    private volatile String deviceTestStatusKey;
+    private volatile boolean deviceTestRunning;
+    private volatile float microphoneTestLevel;
+    private JavaSoundAudioDeviceTester.InputTestSession microphoneTest;
 
     public MineVoiceSettingsScreen(Screen parent, MineVoiceClientUiController uiController) {
         super(Component.translatable("screen.minevoice.settings"));
@@ -56,6 +60,7 @@ public final class MineVoiceSettingsScreen extends Screen {
         for (int index = 0; index < SettingsTab.values().length; index++) {
             SettingsTab tab = SettingsTab.values()[index];
             Button tabButton = Button.builder(tab.title(), button -> {
+                        stopDeviceTest();
                         selectedTab = tab;
                         rebuildWidgets();
                     })
@@ -106,11 +111,11 @@ public final class MineVoiceSettingsScreen extends Screen {
         });
         addButton(Component.translatable("screen.minevoice.test_output"),
                 left, y + 105, (contentWidth - 3) / 2, ROW_HEIGHT, button -> {
-                    JavaSoundAudioDeviceTester.playTone(model.toSettings(), this::setDeviceTestStatus);
+                    startOutputTest();
                 });
-        addButton(Component.translatable("screen.minevoice.test_input"),
+        microphoneTestButton = addButton(microphoneTestButtonMessage(),
                 left + (contentWidth + 3) / 2, y + 105, (contentWidth - 3) / 2, ROW_HEIGHT, button -> {
-                    JavaSoundAudioDeviceTester.probeInput(model.toSettings(), this::setDeviceTestStatus);
+                    toggleMicrophoneTest();
                 });
     }
 
@@ -163,9 +168,9 @@ public final class MineVoiceSettingsScreen extends Screen {
         int panelHeight = panelHeight();
         int contentLeft = panelLeft + 6;
         Component title = Component.literal("MineVOICE");
-        guiGraphics.drawCenteredString(font, title, panelLeft + panelWidth / 2, panelTop + 7, 0xFFFFFFFF);
-        if (selectedTab == SettingsTab.AUDIO && deviceTestStatus != null) {
-            guiGraphics.drawCenteredString(font, deviceTestStatus, panelLeft + panelWidth / 2, panelTop + 177, 0xFFFFFFFF);
+        guiGraphics.drawCenteredString(font, title, panelLeft + panelWidth / 2, panelTop + 7, 0xFF404040);
+        if (selectedTab == SettingsTab.AUDIO) {
+            renderDeviceTestStatus(guiGraphics, panelLeft, panelTop, panelWidth, panelHeight);
         }
         if (selectedTab == SettingsTab.CONTROLS && pushToTalkKey != null) {
             guiGraphics.drawString(font, Component.translatable("screen.minevoice.push_to_talk"), pushToTalkKey.getX(), pushToTalkKey.getY() - 11, 0xFFA0A0A0);
@@ -175,19 +180,21 @@ public final class MineVoiceSettingsScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int padding = 8;
-        renderMenuBackground(
-                graphics,
-                panelLeft() - padding,
-                panelTop() - padding,
-                panelWidth() + padding * 2,
-                panelHeight() + padding * 2
-        );
+        renderTransparentBackground(graphics);
+        MineVoicePanelStyle.render(graphics, panelLeft(), panelTop(), panelWidth(), panelHeight());
     }
 
     @Override
     public void onClose() {
         closeWithoutSaving();
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (microphoneTestButton != null) {
+            microphoneTestButton.setMessage(microphoneTestButtonMessage());
+        }
     }
 
     private void addDeviceButton(int left, int y, int width, String labelKey, String titleKey, String current, List<AudioDevice> devices, DeviceSetter setter) {
@@ -270,11 +277,82 @@ public final class MineVoiceSettingsScreen extends Screen {
                 + ", deafened=" + model.deafened());
     }
 
-    private void setDeviceTestStatus(String translationKey) {
-        deviceTestStatus = Component.translatable(translationKey);
+    private void startOutputTest() {
+        if (deviceTestRunning) {
+            return;
+        }
+        deviceTestRunning = true;
+        deviceTestStatusKey = "screen.minevoice.device_test_output_starting";
+        MineVoiceClientBootstrap.suspendAudioForDeviceTest();
+        JavaSoundAudioDeviceTester.playTone(model.toSettings(), this::finishDeviceTest);
+    }
+
+    private void toggleMicrophoneTest() {
+        if (deviceTestRunning) {
+            if (microphoneTest != null) {
+                microphoneTest.stop();
+            }
+            return;
+        }
+        deviceTestRunning = true;
+        microphoneTestLevel = 0.0F;
+        deviceTestStatusKey = "screen.minevoice.device_test_input_starting";
+        MineVoiceClientBootstrap.suspendAudioForDeviceTest();
+        microphoneTest = JavaSoundAudioDeviceTester.startInputLevelTest(
+                model.toSettings(),
+                update -> {
+                    microphoneTestLevel = update.level();
+                    deviceTestStatusKey = update.statusKey();
+                },
+                () -> finishDeviceTest(deviceTestStatusKey)
+        );
+    }
+
+    private void stopDeviceTest() {
+        if (microphoneTest != null && microphoneTest.running()) {
+            microphoneTest.stop();
+        }
+    }
+
+    private void finishDeviceTest(String statusKey) {
+        deviceTestStatusKey = statusKey;
+        microphoneTest = null;
+        deviceTestRunning = false;
+        microphoneTestLevel = 0.0F;
+        MineVoiceClientBootstrap.resumeAudioAfterDeviceTest();
+    }
+
+    private Component microphoneTestButtonMessage() {
+        return Component.translatable(deviceTestRunning
+                ? "screen.minevoice.test_input_stop"
+                : "screen.minevoice.test_input");
+    }
+
+    private void renderDeviceTestStatus(GuiGraphics graphics, int panelLeft, int panelTop, int panelWidth, int panelHeight) {
+        int statusY = panelTop + panelHeight - 39;
+        if (deviceTestRunning && microphoneTest != null) {
+            int meterLeft = panelLeft + 6;
+            int meterWidth = panelWidth - 12;
+            int meterTop = statusY - 8;
+            int filledWidth = Math.round(meterWidth * microphoneTestLevel);
+            graphics.fill(meterLeft, meterTop, meterLeft + meterWidth, meterTop + 4, 0xFF151A20);
+            graphics.fill(meterLeft, meterTop, meterLeft + filledWidth, meterTop + 4, microphoneTestLevel > 0.70F ? 0xFFE8B14B : 0xFF63D597);
+            graphics.drawCenteredString(
+                    font,
+                    Component.translatable("screen.minevoice.device_test_input_level", Math.round(microphoneTestLevel * 100.0F)),
+                    panelLeft + panelWidth / 2,
+                    statusY,
+                    0xFFFFFFFF
+            );
+            return;
+        }
+        if (deviceTestStatusKey != null) {
+            graphics.drawCenteredString(font, Component.translatable(deviceTestStatusKey), panelLeft + panelWidth / 2, statusY, 0xFFA0A0A0);
+        }
     }
 
     private void saveAndClose() {
+        stopDeviceTest();
         syncOpenFields();
         uiController.saveAndClose(model);
         MineVoiceClientBootstrap.applyPushToTalkBinding(model.pushToTalkKey());
@@ -285,12 +363,14 @@ public final class MineVoiceSettingsScreen extends Screen {
     }
 
     private void reset() {
+        stopDeviceTest();
         model.resetToDefaults();
         pushToTalkKey = null;
         rebuildWidgets();
     }
 
     private void closeWithoutSaving() {
+        stopDeviceTest();
         if (minecraft != null) {
             minecraft.setScreen(parent);
         }

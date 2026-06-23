@@ -20,8 +20,8 @@ public final class MineVoiceGroupScreen extends Screen {
     private static final int PANEL_WIDTH = 236;
     private static final int MIN_PANEL_HEIGHT = 116;
     private static final int ROW_HEIGHT = 22;
-    private static final int TEXT = 0xFFFFFFFF;
-    private static final int SUBTLE_TEXT = 0xFFA0A0A0;
+    private static final int TEXT = 0xFF404040;
+    private static final int SUBTLE_TEXT = 0xFF606060;
     private static final int SPEAKING = 0xFF55FF55;
 
     private final Screen parent;
@@ -82,14 +82,8 @@ public final class MineVoiceGroupScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int padding = 8;
-        renderMenuBackground(
-                graphics,
-                panelLeft() - padding,
-                panelTop() - padding,
-                PANEL_WIDTH + padding * 2,
-                panelHeight() + padding * 2
-        );
+        renderTransparentBackground(graphics);
+        MineVoicePanelStyle.render(graphics, panelLeft(), panelTop(), PANEL_WIDTH, panelHeight());
     }
 
     @Override

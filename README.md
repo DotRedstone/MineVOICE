@@ -2,7 +2,7 @@
 
 MineVOICE 是 Minecraft 1.21.1 / NeoForge 的多人语音模组。它提供范围语音、队伍语音、游戏内设备设置与说话状态显示；玩家进入 Minecraft 服务器后自动获得语音连接信息，无需填写语音 IP、端口或 token。
 
-当前版本为 [v0.1.0-alpha.1](https://github.com/DotRedstone/MineVOICE/releases/tag/v0.1.0-alpha.1)。这是可供联机测试的 Alpha 版本，部署前请阅读下方限制说明。
+当前版本为 [v0.1.0-alpha.2](https://github.com/DotRedstone/MineVOICE/releases/tag/v0.1.0-alpha.2)。这是可供联机测试的 Alpha 版本，部署前请阅读下方限制说明。
 
 ## 下载与安装
 

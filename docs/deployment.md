@@ -2,7 +2,7 @@
 
 ## 当前支持的部署方式
 
-v0.1.0-alpha.1 仅支持 **Remote 模式**：Minecraft 服务端和独立语音服务器分别运行。客户端和 Minecraft 服务端安装同一个 NeoForge 模组；独立语音服务器负责 UDP 鉴权与音频转发。
+v0.1.0-alpha.2 仅支持 **Remote 模式**：Minecraft 服务端和独立语音服务器分别运行。客户端和 Minecraft 服务端安装同一个 NeoForge 模组；独立语音服务器负责 UDP 鉴权与音频转发。
 
 Local 内置语音服务器尚未实现。不要把 `mode` 设置为 `local` 后用于联机测试。
 

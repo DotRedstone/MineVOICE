@@ -9,3 +9,12 @@ dependencies {
 application {
     mainClass = "dev.minevoice.standalone.StandaloneVoiceServerMain"
 }
+
+def minevoiceVersion = project.version.toString()
+
+tasks.named("processResources", ProcessResources) {
+    inputs.property("minevoiceVersion", minevoiceVersion)
+    filesMatching("minevoice-version.properties") {
+        expand(minevoiceVersion: minevoiceVersion)
+    }
+}
