@@ -48,6 +48,22 @@ Local/Remote/LAN demo：
 
 后续仍需要补真实双客户端带宽对比、Opus 初始化失败提示和更细的 codec debug 统计。
 
+## client-sim 压测
+
+`client-sim` 会生成 20ms / 48 kHz / mono PCM，再按指定 codec 编成 `VOICE_FRAME`。默认 codec 是 `opus`，也可以传 `mock` / `mock-pcm` 做裸 PCM 对比。
+
+```powershell
+.\gradlew.bat :client-sim:run --args="5 127.0.0.1 24454 change-me 10 3 PROXIMITY opus"
+```
+
+参数顺序：
+
+```text
+clients host port sharedSecret framesPerClient playerSpacing channel codec
+```
+
+输出里的 `udpSentBytes` / `udpReceivedBytes` 是完整 UDP packet 编码后的字节数，`voicePayloadSentBytes` / `voicePayloadReceivedBytes` 是 encoded audio payload 字节数。`pcmBytesPerFrame=1920` 表示 Opus 编码前每帧 PCM 大小，可用来估算 Opus 压缩效果。
+
 ## OpenAL 策略
 
 Minecraft 本身使用 OpenAL。后续接入时必须避免破坏 MC 声音上下文。当前生产路径保留 Java Sound fallback，OpenAL 先按 backend 抽象和 per-speaker source 生命周期实现，不应一次性替换全部播放链路。

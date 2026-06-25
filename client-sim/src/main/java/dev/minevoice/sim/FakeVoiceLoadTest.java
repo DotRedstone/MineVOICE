@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 public final class FakeVoiceLoadTest {
@@ -33,10 +34,12 @@ public final class FakeVoiceLoadTest {
         int framesPerClient = args.length > 4 ? Integer.parseInt(args[4]) : 3;
         double playerSpacing = args.length > 5 ? Double.parseDouble(args[5]) : 3.0D;
         VoiceChannel channel = args.length > 6 ? VoiceChannel.valueOf(args[6].toUpperCase()) : VoiceChannel.PROXIMITY;
+        String codecName = args.length > 7 ? args[7] : "opus";
         VoiceEndpoint endpoint = new VoiceEndpoint(host, port);
-        FakeVoiceFrameGenerator frameGenerator = new FakeVoiceFrameGenerator();
+        FakeVoiceFrameGenerator frameGenerator = new FakeVoiceFrameGenerator(codecName);
         List<FakeVoiceClient> fakeClients = new ArrayList<>();
         List<UUID> playerIds = new ArrayList<>();
+        long startedAtNanos = System.nanoTime();
 
         for (int index = 0; index < clients; index++) {
             playerIds.add(UUID.randomUUID());
@@ -55,13 +58,26 @@ public final class FakeVoiceLoadTest {
         }
 
         long sentBytes = fakeClients.stream().mapToLong(FakeVoiceClient::sentBytes).sum();
-        int forwardedFrames = fakeClients.stream().mapToInt(FakeVoiceClient::drainForwardedFrames).sum();
+        fakeClients.forEach(FakeVoiceClient::drainForwardedFrames);
         long receivedBytes = fakeClients.stream().mapToLong(FakeVoiceClient::receivedBytes).sum();
+        long packetsSent = fakeClients.stream().mapToLong(FakeVoiceClient::packetsSent).sum();
+        long packetsReceived = fakeClients.stream().mapToLong(FakeVoiceClient::packetsReceived).sum();
+        int voiceFramesSent = fakeClients.stream().mapToInt(FakeVoiceClient::voiceFramesSent).sum();
+        int voiceFramesReceived = fakeClients.stream().mapToInt(FakeVoiceClient::voiceFramesReceived).sum();
+        long voicePayloadBytesSent = fakeClients.stream().mapToLong(FakeVoiceClient::voicePayloadBytesSent).sum();
+        long voicePayloadBytesReceived = fakeClients.stream().mapToLong(FakeVoiceClient::voicePayloadBytesReceived).sum();
+        double elapsedSeconds = Math.max(0.001D, (System.nanoTime() - startedAtNanos) / 1_000_000_000.0D);
         fakeClients.forEach(FakeVoiceClient::close);
         System.out.println("fake clients=" + clients + " framesPerClient=" + framesPerClient);
         System.out.println("playerSpacing=" + playerSpacing + " channel=" + channel);
-        System.out.println("sentBytes=" + sentBytes + " receivedBytes=" + receivedBytes);
-        System.out.println("forwardedFrames=" + forwardedFrames);
+        System.out.println("codec=" + frameGenerator.codecName() + " pcmBytesPerFrame=" + frameGenerator.pcmBytesPerFrame());
+        System.out.println("udpSentBytes=" + sentBytes + " udpReceivedBytes=" + receivedBytes
+                + " packets=" + packetsSent + "/" + packetsReceived);
+        System.out.println("voicePayloadSentBytes=" + voicePayloadBytesSent
+                + " voicePayloadReceivedBytes=" + voicePayloadBytesReceived);
+        System.out.println("voiceFrames=" + voiceFramesSent + "/" + voiceFramesReceived
+                + " forwardedFrames=" + voiceFramesReceived
+                + " fps=" + String.format(Locale.ROOT, "%.1f/%.1f", voiceFramesSent / elapsedSeconds, voiceFramesReceived / elapsedSeconds));
     }
 
     private static void publishStateSnapshot(

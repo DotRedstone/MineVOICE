@@ -21,6 +21,8 @@ import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class FakeVoiceClient implements AutoCloseable {
     private final UUID playerId;
@@ -28,6 +30,12 @@ public final class FakeVoiceClient implements AutoCloseable {
     private final DatagramSocket socket;
     private final VoicePacketCodec packetCodec = new BinaryVoicePacketCodec();
     private final BandwidthCounter bandwidthCounter = new BandwidthCounter();
+    private final AtomicLong packetsSent = new AtomicLong();
+    private final AtomicLong packetsReceived = new AtomicLong();
+    private final AtomicInteger voiceFramesSent = new AtomicInteger();
+    private final AtomicInteger voiceFramesReceived = new AtomicInteger();
+    private final AtomicLong voicePayloadBytesSent = new AtomicLong();
+    private final AtomicLong voicePayloadBytesReceived = new AtomicLong();
     private long sequence;
 
     public FakeVoiceClient(UUID playerId, VoiceEndpoint endpoint) {
@@ -69,7 +77,9 @@ public final class FakeVoiceClient implements AutoCloseable {
 
     public void sendFrame(VoiceFrame frame) {
         send(VoicePacketType.VOICE_FRAME, VoiceFramePayloadCodec.encode(frame));
-        receive();
+        voiceFramesSent.incrementAndGet();
+        voicePayloadBytesSent.addAndGet(frame.encodedAudio().length);
+        recordVoiceFrame(receive());
     }
 
     public long receivedBytes() {
@@ -78,6 +88,30 @@ public final class FakeVoiceClient implements AutoCloseable {
 
     public long sentBytes() {
         return bandwidthCounter.sentBytes();
+    }
+
+    public long packetsReceived() {
+        return packetsReceived.get();
+    }
+
+    public long packetsSent() {
+        return packetsSent.get();
+    }
+
+    public int voiceFramesSent() {
+        return voiceFramesSent.get();
+    }
+
+    public int voiceFramesReceived() {
+        return voiceFramesReceived.get();
+    }
+
+    public long voicePayloadBytesSent() {
+        return voicePayloadBytesSent.get();
+    }
+
+    public long voicePayloadBytesReceived() {
+        return voicePayloadBytesReceived.get();
     }
 
     public int drainForwardedFrames() {
@@ -93,7 +127,7 @@ public final class FakeVoiceClient implements AutoCloseable {
                 if (packet == null) {
                     return forwardedFrames;
                 }
-                if (packet.packetType() == VoicePacketType.VOICE_FRAME && packet.payload().length > 0) {
+                if (recordVoiceFrame(packet)) {
                     forwardedFrames++;
                 }
             }
@@ -130,6 +164,7 @@ public final class FakeVoiceClient implements AutoCloseable {
             );
             socket.send(datagramPacket);
             bandwidthCounter.recordSent(bytes.length);
+            packetsSent.incrementAndGet();
         } catch (IOException exception) {
             throw new IllegalStateException("failed to send fake voice packet", exception);
         }
@@ -141,11 +176,22 @@ public final class FakeVoiceClient implements AutoCloseable {
         try {
             socket.receive(packet);
             bandwidthCounter.recordReceived(packet.getLength());
+            packetsReceived.incrementAndGet();
             byte[] bytes = Arrays.copyOfRange(packet.getData(), packet.getOffset(), packet.getOffset() + packet.getLength());
             return packetCodec.decode(bytes);
         } catch (IOException exception) {
             return null;
         }
+    }
+
+    private boolean recordVoiceFrame(VoicePacket packet) {
+        if (packet == null || packet.packetType() != VoicePacketType.VOICE_FRAME || packet.payload().length == 0) {
+            return false;
+        }
+        VoiceFrame frame = VoiceFramePayloadCodec.decode(packet.payload());
+        voiceFramesReceived.incrementAndGet();
+        voicePayloadBytesReceived.addAndGet(frame.encodedAudio().length);
+        return true;
     }
 
 }
