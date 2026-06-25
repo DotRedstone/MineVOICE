@@ -8,6 +8,7 @@ dependencies {
 }
 
 sourceSets.main.java.srcDir "../common/src/main/java"
+sourceSets.main.java.srcDir "../standalone-server/src/main/java"
 
 base {
     archivesName = "minevoice-neoforge"

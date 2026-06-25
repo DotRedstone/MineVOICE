@@ -25,13 +25,24 @@ public final class MineVoiceModConfigLoader {
 
         return new MineVoiceModConfig(
                 modeProperty(properties, "mode", defaults.mode()),
-                properties.getProperty("bindHost", defaults.bindHost()),
-                intProperty(properties, "bindPort", defaults.bindPort()),
-                properties.getProperty("advertiseHost", defaults.advertiseHost()),
-                intProperty(properties, "advertisePort", defaults.advertisePort()),
+                stringProperty(properties, "localVoiceBindHost", "bindHost", defaults.localVoiceBindHost()),
+                intProperty(properties, "localVoiceBindPort", "bindPort", defaults.localVoiceBindPort()),
+                stringProperty(properties, "localVoiceAdvertiseHost", "advertiseHost", defaults.localVoiceAdvertiseHost()),
+                intProperty(properties, "localVoiceAdvertisePort", "advertisePort", defaults.localVoiceAdvertisePort()),
                 properties.getProperty("remoteVoiceHost", defaults.remoteVoiceHost()),
                 intProperty(properties, "remoteVoicePort", defaults.remoteVoicePort()),
                 properties.getProperty("sharedSecret", defaults.sharedSecret()),
+                intProperty(properties, "proximityDistance", defaults.proximityDistance()),
+                booleanProperty(properties, "enableLanVoiceServer", defaults.enableLanVoiceServer()),
+                booleanProperty(properties, "enableSpatialDebug", defaults.enableSpatialDebug()),
+                properties.getProperty("voiceCodec", defaults.voiceCodec()),
+                properties.getProperty("audioPlaybackBackend", defaults.audioPlaybackBackend()),
+                properties.getProperty("spatialBackend", defaults.spatialBackend()),
+                booleanProperty(properties, "enableOcclusion", defaults.enableOcclusion()),
+                doubleProperty(properties, "occlusionStrength", defaults.occlusionStrength()),
+                booleanProperty(properties, "occlusionLowPass", defaults.occlusionLowPass()),
+                booleanProperty(properties, "enableSoundPhysicsCompat", defaults.enableSoundPhysicsCompat()),
+                intProperty(properties, "jitterBufferMs", defaults.jitterBufferMs()),
                 booleanProperty(properties, "enableDebugLog", defaults.enableDebugLog())
         );
     }
@@ -52,20 +63,55 @@ public final class MineVoiceModConfigLoader {
         }
     }
 
+    private static int intProperty(Properties properties, String key, String legacyKey, int fallback) {
+        try {
+            return Integer.parseInt(stringProperty(properties, key, legacyKey, Integer.toString(fallback)));
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
+    private static double doubleProperty(Properties properties, String key, double fallback) {
+        try {
+            return Double.parseDouble(properties.getProperty(key, Double.toString(fallback)));
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
     private static boolean booleanProperty(Properties properties, String key, boolean fallback) {
         return Boolean.parseBoolean(properties.getProperty(key, Boolean.toString(fallback)));
+    }
+
+    private static String stringProperty(Properties properties, String key, String legacyKey, String fallback) {
+        String value = properties.getProperty(key);
+        if (value != null) {
+            return value;
+        }
+        return properties.getProperty(legacyKey, fallback);
     }
 
     private static void writeDefaults(Path path, MineVoiceModConfig defaults) {
         Properties properties = new Properties();
         properties.setProperty("mode", defaults.mode().name().toLowerCase());
-        properties.setProperty("bindHost", defaults.bindHost());
-        properties.setProperty("bindPort", Integer.toString(defaults.bindPort()));
-        properties.setProperty("advertiseHost", defaults.advertiseHost());
-        properties.setProperty("advertisePort", Integer.toString(defaults.advertisePort()));
+        properties.setProperty("localVoiceBindHost", defaults.localVoiceBindHost());
+        properties.setProperty("localVoiceBindPort", Integer.toString(defaults.localVoiceBindPort()));
+        properties.setProperty("localVoiceAdvertiseHost", defaults.localVoiceAdvertiseHost());
+        properties.setProperty("localVoiceAdvertisePort", Integer.toString(defaults.localVoiceAdvertisePort()));
+        properties.setProperty("enableLanVoiceServer", Boolean.toString(defaults.enableLanVoiceServer()));
         properties.setProperty("remoteVoiceHost", "voice.example.com");
         properties.setProperty("remoteVoicePort", Integer.toString(defaults.remoteVoicePort()));
         properties.setProperty("sharedSecret", defaults.sharedSecret());
+        properties.setProperty("proximityDistance", Integer.toString(defaults.proximityDistance()));
+        properties.setProperty("enableSpatialDebug", Boolean.toString(defaults.enableSpatialDebug()));
+        properties.setProperty("voiceCodec", defaults.voiceCodec());
+        properties.setProperty("audioPlaybackBackend", defaults.audioPlaybackBackend());
+        properties.setProperty("spatialBackend", defaults.spatialBackend());
+        properties.setProperty("enableOcclusion", Boolean.toString(defaults.enableOcclusion()));
+        properties.setProperty("occlusionStrength", Double.toString(defaults.occlusionStrength()));
+        properties.setProperty("occlusionLowPass", Boolean.toString(defaults.occlusionLowPass()));
+        properties.setProperty("enableSoundPhysicsCompat", Boolean.toString(defaults.enableSoundPhysicsCompat()));
+        properties.setProperty("jitterBufferMs", Integer.toString(defaults.jitterBufferMs()));
         properties.setProperty("enableDebugLog", Boolean.toString(defaults.enableDebugLog()));
         try {
             Files.createDirectories(path.getParent());

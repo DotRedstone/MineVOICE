@@ -35,7 +35,9 @@ public final class UdpVoiceServer {
     }
 
     public void start() {
-        running.set(true);
+        if (!running.compareAndSet(false, true)) {
+            return;
+        }
         try (DatagramSocket openedSocket = new DatagramSocket(config.bindPort(), InetAddress.getByName(config.bindHost()))) {
             socket = openedSocket;
             logger.info("UDP voice server listening");
@@ -46,9 +48,16 @@ public final class UdpVoiceServer {
                 packetHandler.handle(openedSocket, packet);
             }
         } catch (SocketException exception) {
-            throw new IllegalStateException("failed to bind UDP voice server", exception);
+            if (running.get()) {
+                throw new IllegalStateException("failed to bind UDP voice server", exception);
+            }
         } catch (IOException exception) {
-            throw new IllegalStateException("UDP voice server stopped unexpectedly", exception);
+            if (running.get()) {
+                throw new IllegalStateException("UDP voice server stopped unexpectedly", exception);
+            }
+        } finally {
+            running.set(false);
+            socket = null;
         }
     }
 

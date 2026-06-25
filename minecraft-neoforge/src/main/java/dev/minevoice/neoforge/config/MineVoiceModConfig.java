@@ -5,13 +5,24 @@ import dev.minevoice.common.config.VoiceMode;
 
 public record MineVoiceModConfig(
         VoiceMode mode,
-        String bindHost,
-        int bindPort,
-        String advertiseHost,
-        int advertisePort,
+        String localVoiceBindHost,
+        int localVoiceBindPort,
+        String localVoiceAdvertiseHost,
+        int localVoiceAdvertisePort,
         String remoteVoiceHost,
         int remoteVoicePort,
         String sharedSecret,
+        int proximityDistance,
+        boolean enableLanVoiceServer,
+        boolean enableSpatialDebug,
+        String voiceCodec,
+        String audioPlaybackBackend,
+        String spatialBackend,
+        boolean enableOcclusion,
+        double occlusionStrength,
+        boolean occlusionLowPass,
+        boolean enableSoundPhysicsCompat,
+        int jitterBufferMs,
         boolean enableDebugLog
 ) {
     public static MineVoiceModConfig localDefaults() {
@@ -24,7 +35,34 @@ public record MineVoiceModConfig(
                 "",
                 VoiceConstants.DEFAULT_UDP_PORT,
                 "change-me",
+                VoiceConstants.DEFAULT_MAX_DISTANCE,
+                true,
+                false,
+                "mock",
+                "auto",
+                "auto",
+                true,
+                0.6D,
+                true,
+                true,
+                60,
                 false
         );
+    }
+
+    public String bindHost() {
+        return localVoiceBindHost;
+    }
+
+    public int bindPort() {
+        return localVoiceBindPort;
+    }
+
+    public String advertiseHost() {
+        return localVoiceAdvertiseHost;
+    }
+
+    public int advertisePort() {
+        return localVoiceAdvertisePort;
     }
 }

@@ -10,6 +10,9 @@ import dev.minevoice.standalone.session.VoiceSessionRegistry;
 import dev.minevoice.standalone.metrics.ServerRuntimeStats;
 import dev.minevoice.standalone.udp.UdpVoiceServer;
 
+import dev.minevoice.common.protocol.VoicePlayerState;
+import java.util.Collection;
+
 public final class StandaloneVoiceServer {
     private final StandaloneConfig config;
     private final MineVoiceLogger logger;
@@ -41,5 +44,9 @@ public final class StandaloneVoiceServer {
 
     public void stop() {
         udpVoiceServer.stop();
+    }
+
+    public void replacePlayerStates(Collection<VoicePlayerState> states) {
+        sessionRegistry.replacePlayerStates(states);
     }
 }

@@ -31,10 +31,7 @@ public final class VoiceStatePublisher {
         if (config.mode().name().equals("LOCAL") || config.remoteVoiceHost().isBlank()) {
             return;
         }
-        List<VoicePlayerState> players = server.getPlayerList().getPlayers().stream()
-                .map(player -> stateFor(player, groupManager, playerVoiceStates))
-                .toList();
-        VoiceServerStateSnapshot snapshot = new VoiceServerStateSnapshot(System.currentTimeMillis(), players);
+        VoiceServerStateSnapshot snapshot = snapshot(server, groupManager, playerVoiceStates);
         byte[] statePayload = VoiceServerStateCodec.encode(snapshot, config.sharedSecret());
         VoicePacket packet = new VoicePacket(
                 VoicePacketType.SERVER_STATE,
@@ -51,6 +48,17 @@ public final class VoiceStatePublisher {
         } catch (Exception exception) {
             throw new IllegalStateException("failed to publish MineVOICE player state", exception);
         }
+    }
+
+    public VoiceServerStateSnapshot snapshot(
+            MinecraftServer server,
+            VoiceGroupManager groupManager,
+            PlayerVoiceStateManager playerVoiceStates
+    ) {
+        List<VoicePlayerState> players = server.getPlayerList().getPlayers().stream()
+                .map(player -> stateFor(player, groupManager, playerVoiceStates))
+                .toList();
+        return new VoiceServerStateSnapshot(System.currentTimeMillis(), players);
     }
 
     private static VoicePlayerState stateFor(

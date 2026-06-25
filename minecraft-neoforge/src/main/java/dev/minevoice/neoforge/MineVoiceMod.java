@@ -4,6 +4,7 @@ import dev.minevoice.common.config.VoiceConstants;
 import dev.minevoice.neoforge.config.MineVoiceModConfig;
 import dev.minevoice.neoforge.config.MineVoiceModConfigLoader;
 import dev.minevoice.neoforge.network.MineVoicePayloads;
+import dev.minevoice.neoforge.server.AdvertisedVoiceEndpointResolver;
 import dev.minevoice.neoforge.server.IntegratedVoiceServerManager;
 import dev.minevoice.neoforge.server.PlayerVoiceStateManager;
 import dev.minevoice.neoforge.server.VoiceGroup;
@@ -19,6 +20,7 @@ import dev.minevoice.neoforge.network.VoiceRosterPayload;
 import dev.minevoice.neoforge.network.VoiceServerInfoPayload;
 import dev.minevoice.common.auth.AuthToken;
 import dev.minevoice.common.auth.AuthTokenCodec;
+import dev.minevoice.common.config.VoiceMode;
 import dev.minevoice.common.protocol.VoiceProtocolVersion;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -49,6 +51,7 @@ public final class MineVoiceMod {
 
     private MineVoiceModConfig config = MineVoiceModConfig.localDefaults();
     private IntegratedVoiceServerManager integratedVoiceServerManager = new IntegratedVoiceServerManager(config);
+    private AdvertisedVoiceEndpointResolver advertisedEndpointResolver = new AdvertisedVoiceEndpointResolver(new dev.minevoice.common.util.MineVoiceLogger("neoforge-endpoint", false));
     private VoiceTokenService voiceTokenService = new VoiceTokenService(config.sharedSecret());
     private final VoiceServerInfoSender voiceServerInfoSender = new VoiceServerInfoSender();
     private final PlayerVoiceStateManager playerVoiceStates = new PlayerVoiceStateManager();
@@ -80,7 +83,7 @@ public final class MineVoiceMod {
         reloadServerConfig();
         voiceGroupManager.clear();
         stateSyncTicks = 0;
-        if (config.mode().name().equals("LOCAL")) {
+        if (config.mode() == VoiceMode.LOCAL) {
             integratedVoiceServerManager.start();
         }
     }
@@ -98,12 +101,15 @@ public final class MineVoiceMod {
 
         playerVoiceStates.markConnected(player.getUUID());
         AuthToken token = voiceTokenService.issue(player.getUUID(), "minevoice-local", Duration.ofMinutes(5));
-        String host = config.mode().name().equals("LOCAL")
-                ? resolveAdvertiseHost()
+        String host = config.mode() == VoiceMode.LOCAL
+                ? resolveAdvertiseHost(player)
                 : config.remoteVoiceHost();
-        int port = config.mode().name().equals("LOCAL")
-                ? config.advertisePort()
+        int port = config.mode() == VoiceMode.LOCAL
+                ? config.localVoiceAdvertisePort()
                 : config.remoteVoicePort();
+        if (config.mode() == VoiceMode.LOCAL) {
+            LOGGER.info("MineVOICE local voice endpoint advertised as {}:{}", host, port);
+        }
 
         voiceServerInfoSender.sendToPlayer(player, new VoiceServerInfoPayload(
                 config.mode(),
@@ -193,23 +199,30 @@ public final class MineVoiceMod {
 
     private void publishVoiceState(net.minecraft.server.MinecraftServer server) {
         try {
+            if (config.mode() == VoiceMode.LOCAL) {
+                integratedVoiceServerManager.replacePlayerStates(
+                        voiceStatePublisher.snapshot(server, voiceGroupManager, playerVoiceStates).players()
+                );
+                return;
+            }
             voiceStatePublisher.publish(server, config, voiceGroupManager, playerVoiceStates);
         } catch (RuntimeException exception) {
             LOGGER.warn("failed to publish MineVOICE player state: {}", exception.getMessage());
         }
     }
 
-    private String resolveAdvertiseHost() {
-        return "auto".equalsIgnoreCase(config.advertiseHost()) ? "127.0.0.1" : config.advertiseHost();
+    private String resolveAdvertiseHost(ServerPlayer player) {
+        return advertisedEndpointResolver.resolveFor(config, player);
     }
 
     private void reloadServerConfig() {
         config = new MineVoiceModConfigLoader().load(FMLPaths.CONFIGDIR.get().resolve("minevoice-server.properties"));
         integratedVoiceServerManager = new IntegratedVoiceServerManager(config);
+        advertisedEndpointResolver = new AdvertisedVoiceEndpointResolver(new dev.minevoice.common.util.MineVoiceLogger("neoforge-endpoint", config.enableDebugLog()));
         voiceTokenService = new VoiceTokenService(config.sharedSecret());
-        String endpoint = config.mode().name().equals("REMOTE")
+        String endpoint = config.mode() == VoiceMode.REMOTE
                 ? config.remoteVoiceHost() + ":" + config.remoteVoicePort()
-                : resolveAdvertiseHost() + ":" + config.advertisePort();
+                : config.localVoiceAdvertiseHost() + ":" + config.localVoiceAdvertisePort();
         LOGGER.info("MineVOICE server config loaded: mode={}, endpoint={}", config.mode(), endpoint);
     }
 }
