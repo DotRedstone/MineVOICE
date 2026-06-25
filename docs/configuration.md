@@ -104,4 +104,9 @@ voiceCodec=opus
 muted=false
 deafened=false
 showDebugConnectionInfo=false
+debugInfoLevel=OFF
+groupActivationMode=PUSH_TO_TALK
+groupVoiceActivationThreshold=0.35
+hudEnabled=true
+nameplateIconsEnabled=true
 ```

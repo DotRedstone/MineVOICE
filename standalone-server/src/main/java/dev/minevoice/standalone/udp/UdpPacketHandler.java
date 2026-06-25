@@ -113,10 +113,12 @@ public final class UdpPacketHandler {
             AuthToken token = AuthTokenCodec.decodeFromBytes(packet.payload());
             TokenValidationResult result = tokenValidator.validate(token);
             if (!result.valid()) {
+                logger.warn("auth failed player=" + token.playerUuid() + " reason=" + result.reason());
                 send(socket, source, VoicePacketType.AUTH_FAILED, token.playerUuid(), packet.sequence(), result.reason().getBytes());
                 return;
             }
             if (!token.playerUuid().equals(packet.playerId())) {
+                logger.warn("auth failed player=" + packet.playerId() + " reason=player identity mismatch tokenPlayer=" + token.playerUuid());
                 send(socket, source, VoicePacketType.AUTH_FAILED, token.playerUuid(), packet.sequence(), "player identity mismatch".getBytes());
                 return;
             }
@@ -128,6 +130,7 @@ public final class UdpPacketHandler {
             sessionRegistry.register(new VoiceSession(sessionId, playerInfo, VoiceSessionState.CONNECTED, now, now));
             send(socket, source, VoicePacketType.AUTH_OK, token.playerUuid(), packet.sequence(), new byte[0]);
         } catch (RuntimeException exception) {
+            logger.warn("auth failed player=" + packet.playerId() + " reason=malformed token: " + exception.getMessage());
             send(socket, source, VoicePacketType.AUTH_FAILED, packet.playerId(), packet.sequence(), exception.getMessage().getBytes());
         }
     }

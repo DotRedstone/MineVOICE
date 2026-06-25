@@ -105,6 +105,7 @@ Local 模式下，同一 JVM 内直接把相同的玩家状态集合写入 embed
 | Server -> Client | `voice_roster` | 玩家名称、队伍、远端静音状态 |
 | Client -> Server | `voice_group_action` | 创建、加入、离开临时语音队伍 |
 | Client -> Server | `voice_player_status` | 同步本地麦克风静音状态 |
+| Client -> Server | `voice_peer_mute` | 同步本地对某个玩家的双向静音意图 |
 
 语音队伍当前是在线会话组：最后一名成员离开后自动删除，不持久化。
 

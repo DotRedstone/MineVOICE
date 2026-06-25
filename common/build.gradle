@@ -9,10 +9,26 @@ dependencies {
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
+def windowsTestRoot = new File(System.getProperty("java.io.tmpdir"), "minevoice-common-test")
+def windowsMainOutput = new File(windowsTestRoot, "main")
+def windowsTestOutput = new File(windowsTestRoot, "test")
+
+def prepareWindowsMainOutput = tasks.register("prepareWindowsMainOutput", Sync) {
+    dependsOn tasks.named("classes")
+    from sourceSets.main.output
+    into windowsMainOutput
+}
+
+def prepareWindowsTestOutput = tasks.register("prepareWindowsTestOutput", Sync) {
+    dependsOn tasks.named("testClasses")
+    from sourceSets.test.output
+    into windowsTestOutput
+}
+
 tasks.named("test", Test).configure {
-    // Gradle's Windows test worker cannot resolve the Unicode workspace path here.
-    // GitHub Actions runs this task on Linux, where the full JUnit suite remains enabled.
-    onlyIf {
-        !System.getProperty("os.name").toLowerCase().contains("windows")
+    if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
+        dependsOn prepareWindowsMainOutput, prepareWindowsTestOutput
+        testClassesDirs = files(windowsTestOutput)
+        classpath = files(windowsTestOutput, windowsMainOutput, configurations.testRuntimeClasspath)
     }
 }

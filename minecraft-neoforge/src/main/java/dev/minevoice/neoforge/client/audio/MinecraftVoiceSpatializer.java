@@ -17,9 +17,11 @@ import java.util.concurrent.ConcurrentMap;
 public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
     private static final double FULL_VOLUME_DISTANCE = 4.0D;
     private static final double MAX_PROXIMITY_DISTANCE = 48.0D;
+    private static final String BACKEND_NAME = "java-sound-pan";
 
     private final ConcurrentMap<UUID, SourceSnapshot> sources = new ConcurrentHashMap<>();
     private volatile ListenerSnapshot listener;
+    private volatile VoiceSpatialDebugSnapshot debugSnapshot = VoiceSpatialDebugSnapshot.unavailable(BACKEND_NAME);
 
     public void refresh() {
         Minecraft minecraft = Minecraft.getInstance();
@@ -51,11 +53,33 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
     @Override
     public StereoGains gainsFor(UUID speakerId, VoiceChannel channel) {
         if (channel != VoiceChannel.PROXIMITY) {
+            debugSnapshot = new VoiceSpatialDebugSnapshot(
+                    speakerId,
+                    channel,
+                    -1.0D,
+                    0.0D,
+                    StereoGains.CENTER.left(),
+                    StereoGains.CENTER.right(),
+                    false,
+                    false,
+                    BACKEND_NAME
+            );
             return StereoGains.CENTER;
         }
         ListenerSnapshot currentListener = listener;
         SourceSnapshot source = sources.get(speakerId);
         if (currentListener == null || source == null) {
+            debugSnapshot = new VoiceSpatialDebugSnapshot(
+                    speakerId,
+                    channel,
+                    -1.0D,
+                    0.0D,
+                    StereoGains.CENTER.left(),
+                    StereoGains.CENTER.right(),
+                    false,
+                    false,
+                    BACKEND_NAME
+            );
             return StereoGains.CENTER;
         }
 
@@ -64,11 +88,33 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
         double deltaZ = source.z() - currentListener.z();
         double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
         if (distance < 0.0001D) {
+            debugSnapshot = new VoiceSpatialDebugSnapshot(
+                    speakerId,
+                    channel,
+                    0.0D,
+                    0.0D,
+                    StereoGains.CENTER.left(),
+                    StereoGains.CENTER.right(),
+                    true,
+                    false,
+                    BACKEND_NAME
+            );
             return StereoGains.CENTER;
         }
 
         float volume = volumeAt(distance);
         if (volume <= 0.0F) {
+            debugSnapshot = new VoiceSpatialDebugSnapshot(
+                    speakerId,
+                    channel,
+                    distance,
+                    0.0D,
+                    0.0F,
+                    0.0F,
+                    true,
+                    false,
+                    BACKEND_NAME
+            );
             return new StereoGains(0.0F, 0.0F);
         }
 
@@ -80,7 +126,23 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
                 ? 0.0D
                 : clamp((deltaX * rightX + deltaZ * rightZ) / horizontalDistance, -1.0D, 1.0D);
         double angle = (pan + 1.0D) * Math.PI / 4.0D;
-        return new StereoGains((float) (volume * Math.cos(angle)), (float) (volume * Math.sin(angle)));
+        StereoGains gains = new StereoGains((float) (volume * Math.cos(angle)), (float) (volume * Math.sin(angle)));
+        debugSnapshot = new VoiceSpatialDebugSnapshot(
+                speakerId,
+                channel,
+                distance,
+                pan,
+                gains.left(),
+                gains.right(),
+                true,
+                false,
+                BACKEND_NAME
+        );
+        return gains;
+    }
+
+    public VoiceSpatialDebugSnapshot debugSnapshot() {
+        return debugSnapshot;
     }
 
     private static float volumeAt(double distance) {

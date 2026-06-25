@@ -26,10 +26,18 @@ public final class PlayerVoiceStateManager {
         return connectedPlayers.containsKey(playerId);
     }
 
+    public int connectedCount() {
+        return connectedPlayers.size();
+    }
+
     public void setMuted(UUID playerId, boolean muted) {
         if (isConnected(playerId)) {
             mutedPlayers.put(playerId, muted);
         }
+    }
+
+    public int mutedCount() {
+        return (int) mutedPlayers.values().stream().filter(Boolean::booleanValue).count();
     }
 
     public boolean muted(UUID playerId) {

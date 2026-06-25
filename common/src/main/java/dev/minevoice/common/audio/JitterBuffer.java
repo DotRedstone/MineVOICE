@@ -20,11 +20,15 @@ public final class JitterBuffer {
 
     public void offer(VoiceFrame frame) {
         if (nextSequence >= 0L && frame.sequence() < nextSequence) {
-            latePackets++;
-            return;
+            if (!ready) {
+                nextSequence = frame.sequence();
+            } else {
+                latePackets++;
+                return;
+            }
         }
         frames.put(frame.sequence(), frame);
-        if (nextSequence < 0L) {
+        if (nextSequence < 0L || (!ready && frame.sequence() < nextSequence)) {
             nextSequence = frame.sequence();
         }
         trimOverflow();

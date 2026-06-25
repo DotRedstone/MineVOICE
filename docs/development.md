@@ -59,10 +59,16 @@ Local/Remote/LAN demo：
 参数顺序：
 
 ```text
-clients host port sharedSecret framesPerClient playerSpacing channel codec
+clients host port sharedSecret framesPerClient playerSpacing channel codec packetLossRate reorderWindow
 ```
 
 输出里的 `udpSentBytes` / `udpReceivedBytes` 是完整 UDP packet 编码后的字节数，`voicePayloadSentBytes` / `voicePayloadReceivedBytes` 是 encoded audio payload 字节数。`pcmBytesPerFrame=1920` 表示 Opus 编码前每帧 PCM 大小，可用来估算 Opus 压缩效果。
+
+`packetLossRate` 可传 `0.1` 或 `10` 表示 10% 模拟丢帧；`reorderWindow=3` 表示每 3 帧内做一次乱序发送，用于压 jitter buffer。
+
+## 音频 DSP 接口
+
+麦克风采集后、codec 编码前会调用 `AudioCaptureProcessor`。当前默认是 `NoopAudioCaptureProcessor`，不改变 PCM；后续降噪、AEC 或自动增益可以在独立算法模块中实现该接口。实现必须足够快，不能阻塞音频采集线程。
 
 ## OpenAL 策略
 

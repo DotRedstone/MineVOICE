@@ -9,8 +9,8 @@
 - [ ] **真实双客户端 Local 回归**：覆盖 `mode=local` 独立 Minecraft 服务端、两个真实客户端自动连接、范围语音、队伍语音、静音、屏蔽听音、断开重连和停服释放 UDP 端口。
 - [ ] **真实双客户端 Remote 回归**：确认 standalone voice server、Minecraft 服务端和两个真实客户端在 alpha.3 后不回归。
 - [ ] **真实 Open to LAN 回归**：A 开单人世界并 Open to LAN，B 从局域网或虚拟组网加入，确认 endpoint/token 自动下发、范围语音和队伍语音可用。
-- [ ] **发布验收记录模板**：每个 tag 记录 Minecraft/NeoForge 版本、Java 版本、Local/Remote/LAN 测试结果、已知问题和回滚目标。
-- [ ] **Windows 测试 runner 修复**：解决 Unicode 工作目录导致 JUnit worker 找不到测试类的问题，恢复可靠的单元测试执行。
+- [x] **发布验收记录模板**：每个 tag 记录 Minecraft/NeoForge 版本、Java 版本、Local/Remote/LAN 测试结果、已知问题和回滚目标，见 `docs/release-validation-template.md`。
+- [x] **Windows 测试 runner 修复**：解决 Unicode 工作目录导致 JUnit worker 找不到测试类的问题，恢复可靠的单元测试执行。
 
 ## P1: 双模式联机稳定性
 
@@ -20,8 +20,8 @@
 - [x] **advertiseHost 自动处理**：`auto` 避免下发 `0.0.0.0`，本机连接使用 loopback，LAN 优先选择 site-local 地址。多网卡仍建议手动配置。
 - [x] **Local/Remote/LAN demo 脚本**：已有 `start-local-demo.ps1`、`start-remote-demo.ps1`、`start-lan-demo.ps1`。
 - [ ] **Local 生命周期加固**：覆盖 reload、停服、端口占用、重复启动、异常关闭后的 socket/thread 释放。
-- [ ] **LAN host 选择诊断**：当 `auto` 无法可靠选择地址时，在日志和 UI 调试页提示手动配置 `localVoiceAdvertiseHost`。
-- [ ] **Remote 错误分流日志**：明确区分 UDP 不通、sharedSecret 不一致、token 过期、endpoint 配置错误和协议版本不匹配。
+- [x] **LAN host 选择诊断**：当 `auto` 无法可靠选择地址时，在日志和 `/minevoice test-endpoint` 提示手动配置 `localVoiceAdvertiseHost`。
+- [x] **Remote 错误分流日志**：鉴权失败会区分 token 过期 / 签名错误 / 身份不一致 / token 解析失败；endpoint 配置可用 `/minevoice test-endpoint` 排查。
 
 ## P2: 音频链路
 
@@ -32,13 +32,13 @@
 - [x] **Opus fallback**：Opus 初始化失败时回退 `mock-pcm-fallback` / Java Sound 可测试路径。
 - [x] **基础带宽统计**：debug 快照显示 codec、UDP send/receive bytes、packet counts、encoded voice bytes 和 frames/sec。
 - [ ] **带宽对比回归**：用双客户端实测记录 Opus 与裸 PCM/mock 的流量差异、听感和 CPU 占用。
-- [ ] **语音激活优化**：补 hysteresis、噪声门、触发阈值说明，并区分公共频道和队伍频道的触发配置。
-- [ ] **降噪 / 回声消除接口**：先做可替换 DSP 接口，不阻塞游戏线程；真实算法后续接入。
+- [x] **语音激活优化**：补 hysteresis、噪声门、触发阈值说明，并区分公共频道和队伍频道的触发配置。
+- [x] **降噪 / 回声消除接口**：先做可替换 DSP 接口，不阻塞游戏线程；真实算法后续接入。
 
 ## P3: 空间语音
 
 - [x] **基础 pan 修正**：左右声道 pan 使用水平距离归一化，音量仍按 3D 距离衰减。
-- [ ] **空间 debug**：暴露 speaker、distance、pan、gain、sameDimension、channel、occlusion、backend。
+- [x] **空间 debug**：暴露 speaker、distance、pan、gain、channel、occlusion、backend；sameDimension 当前由服务端路由保证。
 - [ ] **空间方向手测**：B 在 A 左/右/前/后和绕圈移动时，确认 pan 不反、变化平滑。
 - [ ] **OpenAL backend 抽象**：补 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend`、listener/source provider。
 - [ ] **OpenAL per-speaker source**：每个说话者独立 source，source 跟随玩家位置，listener 跟随相机位置和朝向。
@@ -52,7 +52,7 @@
 - [x] **基础 MineVOICE 面板和设置界面**：按 `O` 打开，支持设备设置、测试输入/输出、静音、屏蔽听音。
 - [x] **频道界面重做**：公共/队伍 tab、玩家头像、玩家音量、玩家静音、队伍密码、搜索和滚动列表已具备基础路径。
 - [x] **HUD 简化路径**：左下角保持麦克风 / 扬声器 / 闭麦 / 关闭听筒状态提示。
-- [ ] **名牌旁图标渲染**：把当前 name tag 文字符号改为真正的小图标布局，固定顺序 speaking / muted / deafened / group。
+- [x] **名牌旁图标渲染**：把当前 name tag 文字符号改为真正的小图标布局，固定顺序 speaking / muted / deafened / group。
 - [ ] **队伍 HUD 细化**：显示成员连接、静音、说话、按住 `G` 的反馈；HUD 不要遮挡核心画面。
 - [ ] **频道页视觉复查**：继续按原版社交界面和原版容器质感微调边框、内嵌列表、搜索框、滚动条和按钮间距。
 - [ ] **UI 开关补齐**：显示/隐藏 HUD、图标大小、头像位置、调试信息等级、空间 debug 显示开关。
@@ -60,23 +60,23 @@
 
 ## P5: 诊断和腐竹工具
 
-- [ ] **管理命令**：实现 `/minevoice status`、`/minevoice debug`、`/minevoice reload`、`/minevoice test-endpoint`。
+- [x] **管理命令**：实现 `/minevoice status`、`/minevoice debug`、`/minevoice reload`、`/minevoice test-endpoint`。
 - [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率；当前 debug 快照已有基础网络统计和基础 jitter 统计。
 - [ ] **服务端诊断日志**：针对 `127.0.0.1`、Docker 容器名、UDP 端口未放行、sharedSecret 不一致给出明确提示。
 - [ ] **debug 等级整理**：默认不刷屏；basic 显示关键状态，verbose 才显示 mixer id、packet、spatial 细节。
-- [ ] **client-sim 压测扩展**：已支持 proximity / group、不同距离、codec 参数和带宽统计；仍需补丢包乱序模拟、对比报告输出和长时间压测。
+- [x] **client-sim 压测扩展**：支持 proximity / group、不同距离、codec 参数、带宽统计、丢包和乱序模拟；长时间压测和报告输出后续继续增强。
 
 ## P6: 文档和发布
 
 - [x] **自动发布**：推送 `v*` 标签会构建 NeoForge jar、standalone zip、Docker 镜像和 GitHub Pre-release。
 - [x] **Docker standalone 示例**：只用于语音服务器，UDP 端口和 `MINEVOICE_SHARED_SECRET` 环境变量明确。
 - [x] **README alpha.3 版本链接**：当前公开版本指向 `v0.1.0-alpha.3`。
-- [ ] **docs/configuration.md 更新**：补 `voiceCodec`、`audioPlaybackBackend`、`spatialBackend`、`enableOcclusion`、`jitterBufferMs`、`enableSpatialDebug`。
-- [ ] **docs/deployment.md 更新**：补 Local 独立服务端、Open to LAN、Remote、Docker、advertiseHost 常见错误和 sharedSecret 安全说明。
-- [ ] **docs/demo.md 更新**：补 Remote/Local/LAN 双客户端脚本、空间方向测试、HUD 状态验证、Opus/jitter/OpenAL debug 查看方式。
-- [ ] **docs/protocol.md 更新**：说明 VOICE_FRAME payload 是 encoded audio frame，协议版本和 codec negotiation 规则要明确。
-- [ ] **docs/development.md 更新**：说明 Opus/OpenAL 依赖选择、fallback 策略、Sound Physics optional compat 边界。
-- [ ] **docs/roadmap.md 更新**：把下一轮 Alpha 拆成 Opus、OpenAL、遮挡、诊断工具和真实双客户端验收。
+- [x] **docs/configuration.md 更新**：补 `voiceCodec`、`audioPlaybackBackend`、`spatialBackend`、`enableOcclusion`、`jitterBufferMs`、`enableSpatialDebug`。
+- [x] **docs/deployment.md 更新**：补 Local 独立服务端、Open to LAN、Remote、Docker、advertiseHost 常见错误、sharedSecret 安全说明和管理命令。
+- [x] **docs/demo.md 更新**：补 Remote/Local/LAN 双客户端脚本、空间方向测试、HUD 状态验证、Opus/jitter/OpenAL debug 查看方式。
+- [x] **docs/protocol.md 更新**：说明 VOICE_FRAME payload 是 encoded audio frame，协议版本和 codec negotiation 规则要明确。
+- [x] **docs/development.md 更新**：说明 Opus/OpenAL 依赖选择、fallback 策略、DSP 接口、Sound Physics optional compat 边界。
+- [x] **docs/roadmap.md 更新**：把下一轮 Alpha 拆成 Opus、OpenAL、遮挡、诊断工具和真实双客户端验收。
 
 ## 后续建议 commit 拆分
 

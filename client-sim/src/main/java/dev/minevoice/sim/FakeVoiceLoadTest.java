@@ -11,15 +11,18 @@ import dev.minevoice.common.protocol.VoiceProtocolVersion;
 import dev.minevoice.common.protocol.VoiceServerStateCodec;
 import dev.minevoice.common.protocol.VoiceServerStateSnapshot;
 import dev.minevoice.common.session.VoiceEndpoint;
+import dev.minevoice.common.protocol.VoiceFrame;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Set;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.UUID;
 
 public final class FakeVoiceLoadTest {
@@ -35,11 +38,16 @@ public final class FakeVoiceLoadTest {
         double playerSpacing = args.length > 5 ? Double.parseDouble(args[5]) : 3.0D;
         VoiceChannel channel = args.length > 6 ? VoiceChannel.valueOf(args[6].toUpperCase()) : VoiceChannel.PROXIMITY;
         String codecName = args.length > 7 ? args[7] : "opus";
+        double packetLossRate = args.length > 8 ? normalizeLossRate(Double.parseDouble(args[8])) : 0.0D;
+        int reorderWindow = args.length > 9 ? Math.max(1, Integer.parseInt(args[9])) : 1;
         VoiceEndpoint endpoint = new VoiceEndpoint(host, port);
         FakeVoiceFrameGenerator frameGenerator = new FakeVoiceFrameGenerator(codecName);
         List<FakeVoiceClient> fakeClients = new ArrayList<>();
         List<UUID> playerIds = new ArrayList<>();
+        Random random = new Random(0x5EEDL);
         long startedAtNanos = System.nanoTime();
+        int droppedOutgoingFrames = 0;
+        int reorderedWindows = 0;
 
         for (int index = 0; index < clients; index++) {
             playerIds.add(UUID.randomUUID());
@@ -52,8 +60,24 @@ public final class FakeVoiceLoadTest {
             boolean authenticated = client.connect(sharedSecret);
             System.out.println("client " + index + " authenticated=" + authenticated);
             client.ping();
+            List<VoiceFrame> frames = new ArrayList<>();
             for (int frameIndex = 0; frameIndex < framesPerClient; frameIndex++) {
-                client.sendFrame(frameGenerator.generate(client.playerId(), frameIndex, channel));
+                if (random.nextDouble() < packetLossRate) {
+                    droppedOutgoingFrames++;
+                    continue;
+                }
+                frames.add(frameGenerator.generate(client.playerId(), frameIndex, channel));
+            }
+            for (int from = 0; from < frames.size(); from += reorderWindow) {
+                int to = Math.min(frames.size(), from + reorderWindow);
+                List<VoiceFrame> window = new ArrayList<>(frames.subList(from, to));
+                if (window.size() > 1 && reorderWindow > 1) {
+                    Collections.shuffle(window, random);
+                    reorderedWindows++;
+                }
+                for (VoiceFrame frame : window) {
+                    client.sendFrame(frame);
+                }
             }
         }
 
@@ -69,7 +93,9 @@ public final class FakeVoiceLoadTest {
         double elapsedSeconds = Math.max(0.001D, (System.nanoTime() - startedAtNanos) / 1_000_000_000.0D);
         fakeClients.forEach(FakeVoiceClient::close);
         System.out.println("fake clients=" + clients + " framesPerClient=" + framesPerClient);
-        System.out.println("playerSpacing=" + playerSpacing + " channel=" + channel);
+        System.out.println("playerSpacing=" + playerSpacing + " channel=" + channel
+                + " packetLossRate=" + String.format(Locale.ROOT, "%.2f", packetLossRate)
+                + " reorderWindow=" + reorderWindow);
         System.out.println("codec=" + frameGenerator.codecName() + " pcmBytesPerFrame=" + frameGenerator.pcmBytesPerFrame());
         System.out.println("udpSentBytes=" + sentBytes + " udpReceivedBytes=" + receivedBytes
                 + " packets=" + packetsSent + "/" + packetsReceived);
@@ -77,7 +103,14 @@ public final class FakeVoiceLoadTest {
                 + " voicePayloadReceivedBytes=" + voicePayloadBytesReceived);
         System.out.println("voiceFrames=" + voiceFramesSent + "/" + voiceFramesReceived
                 + " forwardedFrames=" + voiceFramesReceived
+                + " droppedOutgoingFrames=" + droppedOutgoingFrames
+                + " reorderedWindows=" + reorderedWindows
                 + " fps=" + String.format(Locale.ROOT, "%.1f/%.1f", voiceFramesSent / elapsedSeconds, voiceFramesReceived / elapsedSeconds));
+    }
+
+    private static double normalizeLossRate(double value) {
+        double rate = value > 1.0D ? value / 100.0D : value;
+        return Math.max(0.0D, Math.min(1.0D, rate));
     }
 
     private static void publishStateSnapshot(

@@ -1,8 +1,13 @@
 package dev.minevoice.neoforge.client.audio;
 
+import dev.minevoice.common.audio.AudioCaptureProcessingRequest;
+import dev.minevoice.common.audio.AudioCaptureProcessor;
 import dev.minevoice.common.audio.JitterBuffer;
 import dev.minevoice.common.audio.JitterBufferConfig;
 import dev.minevoice.common.audio.JitterBufferStats;
+import dev.minevoice.common.audio.NoopAudioCaptureProcessor;
+import dev.minevoice.common.audio.VoiceActivityGate;
+import dev.minevoice.common.audio.VoiceAudioFormat;
 import dev.minevoice.common.audio.VoiceCodec;
 import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.common.audio.VoiceDecoder;
@@ -38,6 +43,7 @@ public final class JavaSoundVoiceAudioPipeline {
     private static final int PLAYBACK_FRAME_BYTES = SAMPLES_PER_FRAME * Short.BYTES * 2;
     private static final long FRAME_DURATION_NANOS = TimeUnit.MILLISECONDS.toNanos(20L);
     private static final JitterBufferConfig JITTER_BUFFER_CONFIG = JitterBufferConfig.defaultVoice();
+    private static final VoiceAudioFormat CAPTURE_VOICE_FORMAT = VoiceAudioFormat.narrowbandVoice();
 
     private final UUID playerId;
     private final Supplier<ClientAudioSettings> settingsSupplier;
@@ -46,11 +52,14 @@ public final class JavaSoundVoiceAudioPipeline {
     private final VoiceSpatializer spatializer;
     private final Function<UUID, Float> playerVolumeSupplier;
     private final Function<UUID, Boolean> playerMutedSupplier;
+    private final AudioCaptureProcessor captureProcessor = NoopAudioCaptureProcessor.INSTANCE;
     private final VoiceCodec codec;
     private final BlockingQueue<VoiceFrame> playbackQueue = new LinkedBlockingQueue<>(512);
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicBoolean proximityPushToTalkDown = new AtomicBoolean();
     private final AtomicBoolean groupPushToTalkDown = new AtomicBoolean();
+    private final VoiceActivityGate proximityActivityGate = VoiceActivityGate.defaultVoice();
+    private final VoiceActivityGate groupActivityGate = VoiceActivityGate.defaultVoice();
     private final AtomicReference<VoicePlaybackStats> playbackStats = new AtomicReference<>(VoicePlaybackStats.empty());
     private Thread captureThread;
     private Thread playbackThread;
@@ -137,8 +146,14 @@ public final class JavaSoundVoiceAudioPipeline {
                     }
                     byte[] framePcm = Arrays.copyOf(pcm, read);
                     applyVolume(framePcm, settings.microphoneVolume());
-                    byte[] encoded = codec.encode(framePcm);
                     long timestamp = System.currentTimeMillis();
+                    framePcm = captureProcessor.process(new AudioCaptureProcessingRequest(
+                            framePcm,
+                            CAPTURE_VOICE_FORMAT,
+                            microphoneLevel,
+                            timestamp
+                    ));
+                    byte[] encoded = codec.encode(framePcm);
                     for (VoiceChannel channel : channels) {
                         frameSender.accept(new VoiceFrame(playerId, ++sequence, timestamp, encoded, 48_000, 1, channel));
                     }
@@ -242,13 +257,15 @@ public final class JavaSoundVoiceAudioPipeline {
                 settings.activationMode(),
                 proximityPushToTalkDown.get(),
                 microphoneLevel,
-                settings.voiceActivationThreshold()
+                settings.voiceActivationThreshold(),
+                proximityActivityGate
         );
         boolean groupActive = shouldTransmit(
                 settings.groupActivationMode(),
                 groupPushToTalkDown.get(),
                 microphoneLevel,
-                settings.groupVoiceActivationThreshold()
+                settings.groupVoiceActivationThreshold(),
+                groupActivityGate
         );
         if (proximityActive && groupActive) {
             return List.of(VoiceChannel.PROXIMITY, VoiceChannel.GROUP);
@@ -263,12 +280,14 @@ public final class JavaSoundVoiceAudioPipeline {
             VoiceActivationMode activationMode,
             boolean pushToTalkDown,
             float microphoneLevel,
-            float threshold
+            float threshold,
+            VoiceActivityGate activityGate
     ) {
         if (activationMode == VoiceActivationMode.PUSH_TO_TALK) {
+            activityGate.reset();
             return pushToTalkDown;
         }
-        return microphoneLevel >= threshold;
+        return activityGate.update(microphoneLevel, threshold);
     }
 
     private static float peakLevel(byte[] pcm, int bytes) {
