@@ -1,45 +1,66 @@
-# 本地 Demo 验证
+# Demo 验证
 
-## 启动
+## Remote 本地双客户端
 
-~~~
+```powershell
+.\scripts\start-remote-demo.ps1
+```
+
+脚本会启动独立语音服务器、Minecraft 开发服务端、客户端 A、客户端 B。两个客户端连接：
+
+```text
+127.0.0.1:25565
+```
+
+验证：
+
+1. 两个客户端按 `O` 打开 MineVOICE 面板，状态应为已连接。
+2. A/B 相距 48 方块内，按住 `V` 可听到范围语音。
+3. 超过 48 方块后，范围语音不应继续转发。
+4. 创建同一语音队伍后，按住 `G` 的队伍语音不受距离限制。
+
+## Local 内置服务端
+
+```powershell
 .\scripts\start-local-demo.ps1
-~~~
+```
 
-脚本会构建当前代码，并启动：
+脚本只启动 Minecraft 服务端和两个客户端，不启动 standalone voice server。服务端 `mode=local` 后会在同一 JVM 内绑定 UDP `24454`。
 
-1. UDP 独立语音服务端，端口 24454。
-2. NeoForge 1.21.1 演示服务端，端口 25565。
-3. 两个开发客户端，用户名 MineVoiceA、MineVoiceB。
+服务端日志应包含：
 
-两个客户端都进入多人游戏，直连 127.0.0.1:25565。
+```text
+MineVOICE local voice server starting on 0.0.0.0:24454
+MineVOICE local voice endpoint advertised as <host>:24454
+```
 
-## 功能清单
+验证流程同 Remote demo。额外检查：关闭 Minecraft 服务端后 UDP `24454` 应释放。
 
-1. 按 O 打开 MineVOICE 主面板，确认状态为已连接。
-2. 点击麦克风和扬声器图标，确认静音/屏蔽听音立即生效。
-3. 点击齿轮，在音频页切换麦克风和输出设备；使用测试输入和测试输出。
-4. 两名玩家相距 48 方块以内，按住 V 说话，另一端应听到声音并在右下角看到说话人头像。
-5. 让两名玩家相距超过 48 方块，按住 V 说话，另一端不应收到声音。
-6. 在主面板点队伍图标：A 创建队伍，B 加入队伍。
-7. 让两名玩家相距超过 48 方块，按住 G 使用队伍通道，另一端应听到声音。
-8. 观察玩家名牌：绿色圆点表示当前说话，红色叉号表示对方麦克风静音，青色菱形表示已在语音队伍中。
+## Open to LAN
 
-G 是队伍说话默认键；可在 Minecraft 原生按键设置的 MineVOICE 分类中改键。V 仍为范围说话默认键。
+```powershell
+.\scripts\start-lan-demo.ps1
+```
 
-## 日志检查
+1. 客户端 A 创建单人世界并点击 Open to LAN。
+2. 客户端 B 从多人游戏中的 LAN 世界加入。
+3. 两端 MineVOICE 面板应显示已连接。
+4. 测试 `V` 范围语音和 `G` 队伍语音。
 
-语音服务端日志应出现：
+如果使用 ZeroTier、Radmin VPN 或 Tailscale，请把 host 的 `localVoiceAdvertiseHost` 改成对应虚拟网卡 IP。
 
-~~~
-accepted server state players=2
-relayed voice frame targets=1
-~~~
+## 空间方向测试
 
-当玩家超出距离且未使用队伍通道时，targets=0 是预期结果。
+1. B 站在 A 左侧，A 应听到偏左。
+2. B 站在 A 右侧，A 应听到偏右。
+3. B 在 A 正前和正后，左右应接近均衡。
+4. B 从左到右绕 A，pan 应平滑变化。
 
-停止 Demo：
+当前空间化是 Java Sound 左右声道 pan，不是真正 OpenAL 位置音源。
 
-~~~
-.\scripts\stop-local-demo.ps1
-~~~
+## Debug 查看
+
+- 客户端：`showDebugConnectionInfo=true` 会显示连接状态提示。
+- 服务端：`enableDebugLog=true` 会输出 token、状态同步、UDP 转发等调试日志。
+- codec：当前实际有效实现是 `mock-pcm`；`opus` 仍是 planned。
+- jitter：播放端已有基础 buffer，后续会把 stats 暴露到 HUD 或命令。

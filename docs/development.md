@@ -1,96 +1,54 @@
 # 开发说明
 
-## 模块职责
+## 模块边界
 
 | 模块 | 职责 |
 | --- | --- |
-| `common` | 协议、配置、鉴权接口、音频接口、空间音效接口、通用工具 |
-| `minecraft-neoforge` | Minecraft 客户端和服务端模组骨架 |
-| `standalone-server` | 独立语音服务器骨架 |
-| `client-sim` | 模拟客户端和后续负载测试 |
+| `common` | 协议、配置、codec/jitter/spatial 接口和纯 Java 工具 |
+| `standalone-server` | 独立 UDP voice server、session、relay、auth、发行入口 |
+| `minecraft-neoforge` | NeoForge 客户端/服务端集成、自动下发连接信息、UI、Java Sound 客户端 |
+| `client-sim` | 假客户端和压测入口 |
 
-## 客户端设置界面入口
+Local 模式目前通过 NeoForge 模块复用 standalone 的 UDP/session/relay/auth 代码路径，避免维护两套转发实现。
 
-当前 NeoForge / Minecraft 版本未确定，因此客户端 UI 先拆成不依赖 MC API 的骨架：
+## 常用命令
 
-| 类 | 职责 |
-| --- | --- |
-| `MineVoiceClientUiController` | 打开设置界面、保存设置、关闭当前界面 |
-| `MineVoiceSettingsButtonBinding` | 表示游戏内 MineVOICE 设置按钮的点击入口 |
-| `KeybindManager` | 预留打开设置界面按键和按键说话绑定 |
-| `MineVoiceSettingsScreenModel` | 保存界面字段状态，后续映射到真实 Minecraft `Screen` |
-| `ClientSettingsStore` | 读写客户端本地设置 |
-
-后续接入 NeoForge 时，把按钮 `button.minevoice.settings` 的点击事件连接到 `MineVoiceSettingsButtonBinding#click()`，把打开设置界面的快捷键连接到 `KeybindManager#handleOpenSettingsPressed()`。
-
-## 开发环境
-
-- Java 21。
-- Gradle 多模块工程。
-- Minecraft 1.21.1。
-- NeoForge 21.1.233。
-- ModDevGradle 2.0.141。
-
-启动开发客户端：
-
-```bash
-./gradlew :minecraft-neoforge:runClient
+```powershell
+.\gradlew.bat projects
+.\gradlew.bat :common:build
+.\gradlew.bat :standalone-server:build
+.\gradlew.bat :client-sim:build
+.\gradlew.bat :minecraft-neoforge:build
 ```
 
-进入游戏后有两个入口：
+开发客户端：
 
-1. Mods 页面选择 MineVOICE，点击 Config。
-2. Options -> Controls 里找到 MineVOICE 分类，绑定并按下“打开 MineVOICE 设置”。
-
-## 分支建议
-
-使用短分支名表达变更范围，例如：
-
-```text
-codex/init-skeleton
-codex/protocol-codec
-codex/standalone-udp
+```powershell
+.\gradlew.bat :minecraft-neoforge:runClient
 ```
 
-## TODO 规则
+Local/Remote/LAN demo：
 
-代码 TODO 使用：
-
-```java
-// TODO(minevoice): describe the next concrete action.
+```powershell
+.\scripts\start-local-demo.ps1
+.\scripts\start-remote-demo.ps1
+.\scripts\start-lan-demo.ps1
 ```
 
-TODO 必须说明后续动作。复杂设计写入 `docs/`。
+## Opus 依赖策略
 
-## 测试建议
+当前没有把第三方 Opus 库打进客户端。原因：
 
-- `common` 优先补协议、token、空间距离计算的单元测试。
-- `standalone-server` 优先补 UDP 包处理和鉴权测试。
-- `client-sim` 用于后续模拟 5 / 10 / 30 个客户端。
-- `minecraft-neoforge` 在版本确定后增加集成验证。
+1. Java 21 + Minecraft 客户端分发需要确认跨平台 native 或纯 Java 方案。
+2. 许可证、体积、加载失败 fallback 都需要单独验收。
+3. 语音服务器只转发 encoded frame，codec 可以在客户端侧无痛替换。
 
-## 如何新增协议包
+因此当前实现保留 `VoiceCodec` / `VoiceCodecFactory` / `VoiceAudioFormat`，有效 codec 是 `mock-pcm`。接入 Opus 时要先补依赖说明、fallback、带宽对比和双客户端验收。
 
-1. 在 `VoicePacketType` 增加包类型。
-2. 在 `docs/protocol.md` 说明字段和方向。
-3. 在 `VoicePacketCodec` 实现中处理编码和解码。
-4. 为兼容性更新 `VoiceProtocolVersion`。
-5. 增加最小单元测试或模拟客户端验证。
+## OpenAL 策略
 
-## 如何新增配置项
+Minecraft 本身使用 OpenAL。后续接入时必须避免破坏 MC 声音上下文。当前生产路径保留 Java Sound fallback，OpenAL 先按 backend 抽象和 per-speaker source 生命周期实现，不应一次性替换全部播放链路。
 
-1. 先判断配置属于 Local、Remote、Standalone 还是客户端设置。
-2. 更新对应 config record。
-3. 更新 `docs/configuration.md`。
-4. 避免把服务端 secret 下发给客户端。
+## 测试说明
 
-## 如何做验证
-
-```bash
-./gradlew projects
-./gradlew :common:build
-./gradlew :standalone-server:build
-./gradlew :client-sim:build
-```
-
-如果本机没有 Gradle wrapper 或 Gradle 命令，至少用 Java 编译器验证标准 Java 模块，并在输出中说明缺口。
+`common:test` 在 Windows Unicode 工作目录下按现有配置跳过，CI Linux 会运行。新增协议、codec、jitter、空间纯 Java 逻辑时应优先放在 `common/src/test`。

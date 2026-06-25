@@ -1,94 +1,101 @@
 # MineVOICE
 
-MineVOICE 是 Minecraft 1.21.1 / NeoForge 的多人语音模组。它提供范围语音、队伍语音、游戏内设备设置与说话状态显示；玩家进入 Minecraft 服务器后自动获得语音连接信息，无需填写语音 IP、端口或 token。
+MineVOICE 是面向 Minecraft 1.21.1 / NeoForge 的双模式 3D 语音基础设施。它的主路径不是让玩家手动填写语音服务器，而是由 Minecraft 服务端下发 endpoint 和短期 token，玩家进服后自动完成语音连接。
 
-当前版本为 [v0.1.0-alpha.2](https://github.com/DotRedstone/MineVOICE/releases/tag/v0.1.0-alpha.2)。这是可供联机测试的 Alpha 版本，部署前请阅读下方限制说明。
+当前公开版本为 [v0.1.0-alpha.2](https://github.com/DotRedstone/MineVOICE/releases/tag/v0.1.0-alpha.2)。当前开发分支继续推进 Local 内置语音服务端、基础 jitter buffer 和 Local/LAN 测试脚本。Alpha 版本仍不建议用于高人数生产服。
 
-## 下载与安装
+## 部署包
 
-Release 只有两个需要部署的文件：
+| 文件 | 用途 |
+| --- | --- |
+| `MineVOICE-NeoForge-1.21.1-<版本>.jar` | 同一个 NeoForge 模组文件，客户端和 Minecraft 服务端都安装。Local 模式只需要这个文件。 |
+| `MineVOICE-Voice-Server-<版本>.zip` | Remote 模式使用的独立 UDP 语音服务器核心。 |
 
-| 文件 | 安装位置 | 用途 |
+## 模式选择
+
+| 模式 | 适合场景 | 状态 |
 | --- | --- | --- |
-| `MineVOICE-NeoForge-1.21.1-<版本>.jar` | 每位玩家客户端的 `mods` 目录，以及 Minecraft 服务端的 `mods` 目录 | 同一个 NeoForge 模组包，两端都必须安装，版本必须一致。 |
-| `MineVOICE-Voice-Server-<版本>.zip` | 一台可被玩家访问的语音服务器 | 独立语音服务器核心。解压、配置并启动后，为 Remote 模式提供 UDP 语音转发。 |
+| Local | 小服、朋友服、本机双客户端、Open to LAN | 初步可用，仍需真实多人验收 |
+| Remote | 多人服、独立节点、Docker、低带宽游戏服 | 可用，仍是推荐稳定测试路径 |
 
-`Source code (zip)` 与 `Source code (tar.gz)` 是 GitHub 自动生成的源码归档，不是安装包。
+Local 模式由 Minecraft 服务端 JVM 内启动 embedded UDP voice server；Remote 模式由独立 `standalone-server` 进程负责 UDP 鉴权和转发。两种模式都继续使用服务端下发 token，`sharedSecret` 不会下发给客户端。
 
-## 快速部署
-
-1. 将 NeoForge 模组 jar 放入 Minecraft 服务端和所有客户端的 `mods` 目录。
-2. 解压独立语音服务器 zip，编辑根目录的 `minevoice-standalone.properties`：
-
-   ```properties
-   bindHost=0.0.0.0
-   bindPort=24454
-   sharedSecret=请替换为长随机密钥
-   proximityDistance=48
-   ```
-
-3. 启动独立语音服务器：Windows 运行 `bin/standalone-server.bat`；Linux 运行 `bin/standalone-server`。
-4. 在 Minecraft 服务端首次启动后，编辑 `config/minevoice-server.properties`：
-
-   ```properties
-   mode=remote
-   remoteVoiceHost=玩家可以访问的公网IP或域名
-   remoteVoicePort=24454
-   sharedSecret=与独立语音服务器完全一致的长随机密钥
-   ```
-
-5. 放行独立语音服务器的 UDP `24454` 端口，重启 Minecraft 服务端后让玩家进服。
-
-`remoteVoiceHost` 必须填写玩家能够访问的地址，不能填写 Docker 容器名、`127.0.0.1` 或仅服务端可见的内网地址。
-
-## 游戏内操作
-
-| 操作 | 默认按键 | 说明 |
-| --- | --- | --- |
-| 打开 MineVOICE 面板 | `O` | 查看连接状态，打开设置或队伍面板。 |
-| 范围语音 | `V` | 按住后向附近玩家说话，默认距离由服务端 `proximityDistance` 控制。 |
-| 队伍语音 | `G` | 按住后只向同一语音队伍成员说话，不受距离限制。 |
-| 静音麦克风 / 屏蔽听音 | 主面板图标 | 立即停止发送麦克风，或停止播放其他玩家声音。 |
-
-按键可在 Minecraft 原生“按键设置”里的 MineVOICE 分类中修改。进入设置后可选择输入和输出设备、调整音量，并使用测试输入/输出确认设备是否正常。
-
-## 当前可用能力
+## 当前能力
 
 | 能力 | 状态 | 说明 |
 | --- | --- | --- |
-| 自动连接与鉴权 | 可用 | Minecraft 服务端向客户端下发短期 HMAC token，客户端自动连接 UDP 语音服务器。 |
-| 输入设备采集和输出播放 | 可用 | 基于 Java Sound，支持系统默认设备与手动选择。 |
-| 范围和队伍语音路由 | 可用 | 非队伍语音按维度与方块距离筛选；队伍语音独立路由。 |
-| 游戏内状态界面 | 可用 | 包含连接状态、设备设置、静音控制、说话人和名牌状态。 |
-| 初步立体声方向感 | 可用 | 根据说话者相对位置调整左右声道，尚不是完整声学模拟。 |
-| Opus 编码、抖动缓冲 | 未实现 | 当前链路用于功能验证，带宽和网络抗抖动能力不适合大规模正式服。 |
-| 降噪、回声消除、语音激活 | 未实现 | 当前建议使用按键说话。 |
-| 方块遮挡和真实 3D 声学 | 未实现 | 后续算法会使用服务端下发的方块上下文，不会改变队伍语音的距离规则。 |
-| 内置 Local 语音服务端 | 未实现 | 当前仅验证并支持 Remote 独立语音服务器部署。 |
+| 自动下发 endpoint/token | 可用 | Minecraft 服务端给每个玩家下发短期 HMAC token。 |
+| Remote 独立语音服务器 | 可用 | 独立 UDP 服务端继续可用。 |
+| Local 内置语音服务端 | 初步可用 | MC 服务端 `mode=local` 时自动启动 UDP 服务，停服释放端口。 |
+| Open to LAN 语音 | experimental | LAN host 可复用 Local 配置；多网卡场景建议手动指定 `localVoiceAdvertiseHost`。 |
+| 范围语音 / 队伍语音 | 可用 | 范围语音按维度和距离路由，队伍语音不受距离限制。 |
+| 游戏内设备设置和 HUD | 可用 | 支持设备选择、输入/输出测试、静音、屏蔽听音、说话头像提示。 |
+| 基础立体声方向感 | 可用 | Java Sound fallback 基于相对位置做左右声道 pan。 |
+| jitter buffer | 初步可用 | 接收端按说话者和 sequence 做基础乱序重排与迟到包丢弃。 |
+| Opus | planned / experimental | 已有 codec 抽象和配置位；当前有效实现仍是 `mock-pcm`，未引入第三方 Opus。 |
+| OpenAL 位置音源 | planned | 暂未接入，Java Sound 是当前 fallback。 |
+| 基础遮挡 / 低通 | planned | 配置位已预留，真实遮挡采样和滤波仍待实现。 |
+| Sound Physics Remastered 兼容 | planned | 只作为 optional compat 设计方向，不是硬依赖。 |
 
-## 验证联机
+## 快速配置
 
-推荐使用两名真实玩家、一个 Minecraft 服务端和一个独立语音服务器验证：
+Local 小服：
 
-1. 两名玩家进入同一世界，确认 `O` 面板显示已连接。
-2. 相距 48 方块内，玩家 A 按住 `V` 说话，玩家 B 应听到声音并看到说话状态。
-3. 相距超过 48 方块，玩家 B 不应再听到 A 的范围语音。
-4. 创建并加入同一语音队伍后，相距超过 48 方块时按住 `G`，两端仍应互相听到。
-5. 切换耳机或麦克风后，在设置页改回“系统默认”或重新选择设备，再使用测试输入/输出验证。
+```properties
+mode=local
+localVoiceBindHost=0.0.0.0
+localVoiceBindPort=24454
+localVoiceAdvertiseHost=auto
+localVoiceAdvertisePort=24454
+enableLanVoiceServer=true
+sharedSecret=replace-with-a-long-random-secret
+proximityDistance=48
+enableDebugLog=false
+```
 
-完整的本地双客户端开发验证见 [本地 Demo](docs/demo.md)，网络、端口和 Docker 部署见 [部署说明](docs/deployment.md)。
+Remote 多人服：
+
+```properties
+mode=remote
+remoteVoiceHost=voice.example.com
+remoteVoicePort=24454
+sharedSecret=replace-with-a-long-random-secret
+enableDebugLog=false
+```
+
+Remote 需要放行 UDP `24454`。`remoteVoiceHost` 必须是玩家客户端可访问的地址，不要填 Docker 容器名、`127.0.0.1` 或仅服务端内部可见的地址。
+
+## 游戏内操作
+
+| 操作 | 默认按键 |
+| --- | --- |
+| 打开 MineVOICE 面板 | `O` |
+| 范围语音 | 按住 `V` |
+| 队伍语音 | 按住 `G` |
+
+按键可在 Minecraft 原生按键设置里的 MineVOICE 分类修改。
+
+## 本地测试
+
+```powershell
+.\scripts\start-local-demo.ps1
+.\scripts\start-remote-demo.ps1
+.\scripts\start-lan-demo.ps1
+```
+
+Local demo 会启动 Minecraft 服务端和两个客户端，不需要独立语音服务器窗口。Remote demo 会额外启动 standalone voice server。
 
 ## 文档
 
 - [配置说明](docs/configuration.md)
 - [部署说明](docs/deployment.md)
-- [本地 Demo](docs/demo.md)
+- [Demo 验证](docs/demo.md)
 - [协议说明](docs/protocol.md)
-- [算法接口](docs/algorithm-api.md)
 - [开发说明](docs/development.md)
-- [产品 TODO](TODO.md)
+- [算法接口](docs/algorithm-api.md)
 - [路线图](docs/roadmap.md)
+- [TODO](TODO.md)
 
 ## Alpha 限制
 
-请勿将 Alpha 版本直接用于高人数生产服务器。当前重点是验证设备、鉴权、UDP 转发、范围/队伍路由和游戏内交互；音频压缩、网络抗抖动、降噪与完整 3D 声学仍在后续计划中。不要把 `sharedSecret` 提交到 Git、截图或发送给玩家。
+请不要把 Alpha 版本直接用于高人数生产服。当前重点是验证自动连接、UDP 转发、范围/队伍路由、设备设置、Local/Remote 双模式和基础网络稳定性。Opus、OpenAL、降噪、真实遮挡和 Sound Physics optional compat 还没有完成生产级实现。
