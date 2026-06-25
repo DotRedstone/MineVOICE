@@ -13,6 +13,7 @@ public final class MineVoiceSettingsScreenModel {
     private VoiceActivationMode activationMode;
     private float voiceActivationThreshold;
     private boolean spatialAudioEnabled;
+    private String voiceCodec;
     private boolean muted;
     private boolean deafened;
     private boolean showDebugConnectionInfo;
@@ -27,6 +28,7 @@ public final class MineVoiceSettingsScreenModel {
         this.activationMode = settings.activationMode();
         this.voiceActivationThreshold = settings.voiceActivationThreshold();
         this.spatialAudioEnabled = settings.spatialAudioEnabled();
+        this.voiceCodec = settings.voiceCodec();
         this.muted = settings.muted();
         this.deafened = settings.deafened();
         this.showDebugConnectionInfo = settings.showDebugConnectionInfo();
@@ -47,6 +49,7 @@ public final class MineVoiceSettingsScreenModel {
                 activationMode,
                 voiceActivationThreshold,
                 spatialAudioEnabled,
+                voiceCodec,
                 muted,
                 deafened,
                 showDebugConnectionInfo
@@ -64,6 +67,7 @@ public final class MineVoiceSettingsScreenModel {
         activationMode = defaults.activationMode();
         voiceActivationThreshold = defaults.voiceActivationThreshold();
         spatialAudioEnabled = defaults.spatialAudioEnabled();
+        voiceCodec = defaults.voiceCodec();
         muted = defaults.muted();
         deafened = defaults.deafened();
         showDebugConnectionInfo = defaults.showDebugConnectionInfo();

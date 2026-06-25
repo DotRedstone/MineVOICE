@@ -52,6 +52,7 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
                 enumProperty(properties, "activationMode", VoiceActivationMode.class, defaults.activationMode()),
                 floatProperty(properties, "voiceActivationThreshold", defaults.voiceActivationThreshold()),
                 booleanProperty(properties, "spatialAudioEnabled", defaults.spatialAudioEnabled()),
+                properties.getProperty("voiceCodec", defaults.voiceCodec()),
                 booleanProperty(properties, "muted", defaults.muted()),
                 booleanProperty(properties, "deafened", defaults.deafened()),
                 booleanProperty(properties, "showDebugConnectionInfo", defaults.showDebugConnectionInfo())
@@ -71,6 +72,7 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         properties.setProperty("activationMode", settings.activationMode().name());
         properties.setProperty("voiceActivationThreshold", Float.toString(settings.voiceActivationThreshold()));
         properties.setProperty("spatialAudioEnabled", Boolean.toString(settings.spatialAudioEnabled()));
+        properties.setProperty("voiceCodec", settings.voiceCodec());
         properties.setProperty("muted", Boolean.toString(settings.muted()));
         properties.setProperty("deafened", Boolean.toString(settings.deafened()));
         properties.setProperty("showDebugConnectionInfo", Boolean.toString(settings.showDebugConnectionInfo()));

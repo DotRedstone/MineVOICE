@@ -1,7 +1,9 @@
 package dev.minevoice.neoforge.client.audio;
 
-import dev.minevoice.common.audio.MockVoiceCodec;
+import dev.minevoice.common.audio.JitterBuffer;
+import dev.minevoice.common.audio.JitterBufferConfig;
 import dev.minevoice.common.audio.VoiceCodec;
+import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.common.protocol.VoiceFrame;
 import dev.minevoice.common.protocol.VoiceChannel;
 import dev.minevoice.neoforge.client.ClientAudioSettings;
@@ -11,7 +13,6 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,14 +32,14 @@ public final class JavaSoundVoiceAudioPipeline {
     private static final int SAMPLES_PER_FRAME = FRAME_BYTES / Short.BYTES;
     private static final int PLAYBACK_FRAME_BYTES = SAMPLES_PER_FRAME * Short.BYTES * 2;
     private static final long FRAME_DURATION_NANOS = TimeUnit.MILLISECONDS.toNanos(20L);
-    private static final int MAX_QUEUED_FRAMES_PER_SPEAKER = 8;
+    private static final JitterBufferConfig JITTER_BUFFER_CONFIG = JitterBufferConfig.defaultVoice();
 
     private final UUID playerId;
     private final Supplier<ClientAudioSettings> settingsSupplier;
     private final Consumer<VoiceFrame> frameSender;
     private final VoiceActivityListener activityListener;
     private final VoiceSpatializer spatializer;
-    private final VoiceCodec codec = new MockVoiceCodec();
+    private final VoiceCodec codec;
     private final BlockingQueue<VoiceFrame> playbackQueue = new LinkedBlockingQueue<>(512);
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicBoolean proximityPushToTalkDown = new AtomicBoolean();
@@ -61,6 +62,7 @@ public final class JavaSoundVoiceAudioPipeline {
         this.frameSender = frameSender;
         this.activityListener = activityListener;
         this.spatializer = spatializer;
+        this.codec = VoiceCodecFactory.create(settingsSupplier.get().voiceCodec());
     }
 
     public void start() {
@@ -130,7 +132,7 @@ public final class JavaSoundVoiceAudioPipeline {
     }
 
     private void playbackLoop() {
-        Map<UUID, ArrayDeque<VoiceFrame>> sourceFrames = new HashMap<>();
+        Map<UUID, JitterBuffer> sourceFrames = new HashMap<>();
         while (running.get()) {
             ClientAudioSettings settings = settingsSupplier.get();
             try (SourceDataLine line = openSourceLine(settings)) {
@@ -248,31 +250,28 @@ public final class JavaSoundVoiceAudioPipeline {
         }
     }
 
-    private void drainPlaybackQueue(Map<UUID, ArrayDeque<VoiceFrame>> sourceFrames) {
+    private void drainPlaybackQueue(Map<UUID, JitterBuffer> sourceFrames) {
         VoiceFrame frame;
         while ((frame = playbackQueue.poll()) != null) {
             enqueueSourceFrame(sourceFrames, frame);
         }
     }
 
-    private static void enqueueSourceFrame(Map<UUID, ArrayDeque<VoiceFrame>> sourceFrames, VoiceFrame frame) {
-        ArrayDeque<VoiceFrame> frames = sourceFrames.computeIfAbsent(frame.senderPlayerId(), ignored -> new ArrayDeque<>());
-        if (frames.size() >= MAX_QUEUED_FRAMES_PER_SPEAKER) {
-            frames.removeFirst();
-        }
-        frames.addLast(frame);
+    private static void enqueueSourceFrame(Map<UUID, JitterBuffer> sourceFrames, VoiceFrame frame) {
+        JitterBuffer frames = sourceFrames.computeIfAbsent(frame.senderPlayerId(), ignored -> new JitterBuffer(JITTER_BUFFER_CONFIG));
+        frames.offer(frame);
     }
 
-    private byte[] mixStereoFrame(Map<UUID, ArrayDeque<VoiceFrame>> sourceFrames, ClientAudioSettings settings) {
+    private byte[] mixStereoFrame(Map<UUID, JitterBuffer> sourceFrames, ClientAudioSettings settings) {
         int[] left = new int[SAMPLES_PER_FRAME];
         int[] right = new int[SAMPLES_PER_FRAME];
         boolean mixedAudio = false;
         float volume = clampVolume(settings.masterVolume() * settings.voiceChatVolume());
-        Iterator<Map.Entry<UUID, ArrayDeque<VoiceFrame>>> iterator = sourceFrames.entrySet().iterator();
+        Iterator<Map.Entry<UUID, JitterBuffer>> iterator = sourceFrames.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<UUID, ArrayDeque<VoiceFrame>> entry = iterator.next();
-            VoiceFrame frame = entry.getValue().pollFirst();
-            if (entry.getValue().isEmpty()) {
+            Map.Entry<UUID, JitterBuffer> entry = iterator.next();
+            VoiceFrame frame = entry.getValue().pollReady();
+            if (frame == null && !entry.getValue().hasBufferedFrames()) {
                 iterator.remove();
             }
             if (frame == null || frame.channels() != 1) {
@@ -295,7 +294,7 @@ public final class JavaSoundVoiceAudioPipeline {
                 left[index] += Math.round(sample * leftGain);
                 right[index] += Math.round(sample * rightGain);
             }
-            mixedAudio = sampleCount > 0;
+            mixedAudio = mixedAudio || sampleCount > 0;
         }
         if (!mixedAudio) {
             return null;

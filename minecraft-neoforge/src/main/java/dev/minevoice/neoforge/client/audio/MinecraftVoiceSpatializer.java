@@ -75,7 +75,10 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
         double yaw = Math.toRadians(currentListener.yaw());
         double rightX = -Math.cos(yaw);
         double rightZ = -Math.sin(yaw);
-        double pan = clamp((deltaX * rightX + deltaZ * rightZ) / distance, -1.0D, 1.0D);
+        double horizontalDistance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+        double pan = horizontalDistance < 0.0001D
+                ? 0.0D
+                : clamp((deltaX * rightX + deltaZ * rightZ) / horizontalDistance, -1.0D, 1.0D);
         double angle = (pan + 1.0D) * Math.PI / 4.0D;
         return new StereoGains((float) (volume * Math.cos(angle)), (float) (volume * Math.sin(angle)));
     }
