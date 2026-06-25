@@ -66,6 +66,7 @@ public final class MineVoiceGroupScreen extends Screen {
     private EditBox joinPassword;
     private UUID renderedGroupId;
     private String renderedSearch = "";
+    private String pendingSearch = "";
     private int listScroll;
     private boolean restoreSearchFocus;
 
@@ -101,7 +102,7 @@ public final class MineVoiceGroupScreen extends Screen {
         searchBox.setMaxLength(32);
         searchBox.setTextColor(0xFFFFFFFF);
         searchBox.setHint(Component.translatable("screen.minevoice.group.search").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY));
-        searchBox.setValue(renderedSearch);
+        searchBox.setValue(pendingSearch);
         searchBox.setResponder(this::updateSearch);
         addRenderableWidget(searchBox);
         if (restoreSearchFocus) {
@@ -220,6 +221,7 @@ public final class MineVoiceGroupScreen extends Screen {
         if (searchBox != null
                 && searchBox.isFocused()
                 && (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
+            applySearch();
             return true;
         }
         if (searchBox == null || !searchBox.isFocused()) {
@@ -379,17 +381,23 @@ public final class MineVoiceGroupScreen extends Screen {
     private void switchTab(ChannelTab tab) {
         selectedTab = tab;
         renderedSearch = "";
+        pendingSearch = "";
         listScroll = 0;
         rebuildWidgets();
     }
 
     private void updateSearch(String value) {
-        if (!value.equals(renderedSearch)) {
-            renderedSearch = value;
-            listScroll = 0;
-            restoreSearchFocus = true;
-            rebuildWidgets();
+        pendingSearch = value;
+    }
+
+    private void applySearch() {
+        if (pendingSearch.equals(renderedSearch)) {
+            return;
         }
+        renderedSearch = pendingSearch;
+        listScroll = 0;
+        restoreSearchFocus = true;
+        rebuildWidgets();
     }
 
     private List<VoiceRosterEntry> filteredPlayers(boolean groupOnly) {
