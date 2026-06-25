@@ -2,6 +2,7 @@ package dev.minevoice.neoforge.client.audio;
 
 import dev.minevoice.common.audio.JitterBuffer;
 import dev.minevoice.common.audio.JitterBufferConfig;
+import dev.minevoice.common.audio.JitterBufferStats;
 import dev.minevoice.common.audio.VoiceCodec;
 import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.common.audio.VoiceDecoder;
@@ -24,6 +25,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -49,6 +51,7 @@ public final class JavaSoundVoiceAudioPipeline {
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicBoolean proximityPushToTalkDown = new AtomicBoolean();
     private final AtomicBoolean groupPushToTalkDown = new AtomicBoolean();
+    private final AtomicReference<VoicePlaybackStats> playbackStats = new AtomicReference<>(VoicePlaybackStats.empty());
     private Thread captureThread;
     private Thread playbackThread;
     private volatile TargetDataLine activeCaptureLine;
@@ -97,6 +100,7 @@ public final class JavaSoundVoiceAudioPipeline {
         closeLine(activeCaptureLine);
         closeLine(activePlaybackLine);
         playbackQueue.clear();
+        playbackStats.set(VoicePlaybackStats.empty());
     }
 
     public void setPushToTalkDown(boolean pressed) {
@@ -109,6 +113,10 @@ public final class JavaSoundVoiceAudioPipeline {
 
     public void enqueuePlayback(VoiceFrame frame) {
         playbackQueue.offer(frame);
+    }
+
+    public VoicePlaybackStats playbackStats() {
+        return playbackStats.get();
     }
 
     private void captureLoop() {
@@ -153,10 +161,12 @@ public final class JavaSoundVoiceAudioPipeline {
                 long nextMixAt = System.nanoTime();
                 while (running.get() && samePlaybackDevice(settings)) {
                     drainPlaybackQueue(sourceFrames);
+                    updatePlaybackStats(sourceFrames);
                     ClientAudioSettings current = settingsSupplier.get();
                     if (current.deafened()) {
                         sourceFrames.clear();
                         playbackQueue.clear();
+                        playbackStats.set(VoicePlaybackStats.empty());
                         continue;
                     }
                     if (sourceFrames.isEmpty()) {
@@ -178,6 +188,7 @@ public final class JavaSoundVoiceAudioPipeline {
                     if (stereoPcm != null) {
                         line.write(stereoPcm, 0, stereoPcm.length);
                     }
+                    updatePlaybackStats(sourceFrames);
                     nextMixAt += FRAME_DURATION_NANOS;
                     if (nextMixAt < now - FRAME_DURATION_NANOS) {
                         nextMixAt = now;
@@ -299,6 +310,27 @@ public final class JavaSoundVoiceAudioPipeline {
                 codec.createDecoder()
         ));
         source.jitterBuffer().offer(frame);
+    }
+
+    private void updatePlaybackStats(Map<UUID, SourcePlaybackState> sourceFrames) {
+        int bufferedFrames = 0;
+        long latePackets = 0L;
+        long droppedPackets = 0L;
+        long missingFrames = 0L;
+        for (SourcePlaybackState source : sourceFrames.values()) {
+            JitterBufferStats stats = source.jitterBuffer().stats();
+            bufferedFrames += stats.bufferedFrames();
+            latePackets += stats.latePackets();
+            droppedPackets += stats.droppedPackets();
+            missingFrames += stats.missingFrames();
+        }
+        playbackStats.set(new VoicePlaybackStats(
+                sourceFrames.size(),
+                bufferedFrames,
+                latePackets,
+                droppedPackets,
+                missingFrames
+        ));
     }
 
     private byte[] mixStereoFrame(Map<UUID, SourcePlaybackState> sourceFrames, ClientAudioSettings settings) {

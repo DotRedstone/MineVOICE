@@ -61,7 +61,7 @@
 ## P5: 诊断和腐竹工具
 
 - [ ] **管理命令**：实现 `/minevoice status`、`/minevoice debug`、`/minevoice reload`、`/minevoice test-endpoint`。
-- [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率；当前 debug 快照已有基础网络统计。
+- [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率；当前 debug 快照已有基础网络统计和基础 jitter 统计。
 - [ ] **服务端诊断日志**：针对 `127.0.0.1`、Docker 容器名、UDP 端口未放行、sharedSecret 不一致给出明确提示。
 - [ ] **debug 等级整理**：默认不刷屏；basic 显示关键状态，verbose 才显示 mixer id、packet、spatial 细节。
 - [ ] **client-sim 压测扩展**：已支持 proximity / group、不同距离、codec 参数和带宽统计；仍需补丢包乱序模拟、对比报告输出和长时间压测。

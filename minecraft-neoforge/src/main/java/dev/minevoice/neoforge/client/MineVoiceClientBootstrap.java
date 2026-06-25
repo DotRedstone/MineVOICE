@@ -2,6 +2,7 @@ package dev.minevoice.neoforge.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import dev.minevoice.neoforge.client.audio.VoicePlaybackStats;
 import dev.minevoice.neoforge.client.screen.MineVoiceSettingsScreen;
 import dev.minevoice.neoforge.client.screen.MineVoiceMenuScreen;
 import dev.minevoice.neoforge.client.hud.MineVoiceHudOverlay;
@@ -138,11 +139,16 @@ public final class MineVoiceClientBootstrap {
         return VOICE_CONNECTION_MANAGER.networkStats();
     }
 
+    public static VoicePlaybackStats voicePlaybackStats() {
+        return VOICE_CONNECTION_MANAGER.playbackStats();
+    }
+
     public static String debugConnectionSummary() {
         VoiceNetworkStats stats = voiceNetworkStats();
+        VoicePlaybackStats playbackStats = voicePlaybackStats();
         return String.format(
                 Locale.ROOT,
-                "status=%s endpoint=%s proto=%d codec=%s up=%ds udp=%.1f/%.1fKiB pkts=%d/%d voice=%.1f/%.1fKiB frames=%d/%d fps=%.1f/%.1f",
+                "status=%s endpoint=%s proto=%d codec=%s up=%ds udp=%.1f/%.1fKiB pkts=%d/%d voice=%.1f/%.1fKiB frames=%d/%d fps=%.1f/%.1f jitter=speakers:%d buffered:%d late:%d dropped:%d missing:%d",
                 stats.status(),
                 stats.endpoint(),
                 stats.protocolVersion(),
@@ -157,7 +163,12 @@ public final class MineVoiceClientBootstrap {
                 stats.voiceFramesSent(),
                 stats.voiceFramesReceived(),
                 stats.voiceFramesSentPerSecond(),
-                stats.voiceFramesReceivedPerSecond()
+                stats.voiceFramesReceivedPerSecond(),
+                playbackStats.activeSpeakers(),
+                playbackStats.bufferedFrames(),
+                playbackStats.latePackets(),
+                playbackStats.droppedPackets(),
+                playbackStats.missingFrames()
         );
     }
 

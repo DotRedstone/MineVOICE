@@ -10,6 +10,7 @@ import dev.minevoice.common.protocol.VoicePacketType;
 import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.neoforge.client.audio.JavaSoundVoiceAudioPipeline;
 import dev.minevoice.neoforge.client.audio.MinecraftVoiceSpatializer;
+import dev.minevoice.neoforge.client.audio.VoicePlaybackStats;
 import dev.minevoice.neoforge.network.VoiceServerInfoPayload;
 
 import java.io.IOException;
@@ -123,6 +124,11 @@ public final class ClientVoiceConnectionManager {
                 voicePayloadBytesSent.get(),
                 voicePayloadBytesReceived.get()
         );
+    }
+
+    public VoicePlaybackStats playbackStats() {
+        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        return pipeline == null ? VoicePlaybackStats.empty() : pipeline.playbackStats();
     }
 
     public VoiceHudState hudState() {
