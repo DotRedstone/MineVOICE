@@ -30,7 +30,8 @@
 - [x] **Opus 编解码接入**：使用纯 Java Concentus Opus，避免 native 分发问题；仍需真实双客户端听感和带宽验收。
 - [x] **Encoded frame 格式确认**：`VOICE_FRAME` 明确承载 encoded audio frame，服务端只转发、不解码、不混音。
 - [x] **Opus fallback**：Opus 初始化失败时回退 `mock-pcm-fallback` / Java Sound 可测试路径。
-- [ ] **带宽统计**：debug 显示 codec、send/receive bytes、frames/sec，并对比 Opus 与裸 PCM。
+- [x] **基础带宽统计**：debug 快照显示 codec、UDP send/receive bytes、packet counts、encoded voice bytes 和 frames/sec。
+- [ ] **带宽对比回归**：用双客户端实测记录 Opus 与裸 PCM/mock 的流量差异、听感和 CPU 占用。
 - [ ] **语音激活优化**：补 hysteresis、噪声门、触发阈值说明，并区分公共频道和队伍频道的触发配置。
 - [ ] **降噪 / 回声消除接口**：先做可替换 DSP 接口，不阻塞游戏线程；真实算法后续接入。
 
@@ -60,7 +61,7 @@
 ## P5: 诊断和腐竹工具
 
 - [ ] **管理命令**：实现 `/minevoice status`、`/minevoice debug`、`/minevoice reload`、`/minevoice test-endpoint`。
-- [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率。
+- [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率；当前 debug 快照已有基础网络统计。
 - [ ] **服务端诊断日志**：针对 `127.0.0.1`、Docker 容器名、UDP 端口未放行、sharedSecret 不一致给出明确提示。
 - [ ] **debug 等级整理**：默认不刷屏；basic 显示关键状态，verbose 才显示 mixer id、packet、spatial 细节。
 - [ ] **client-sim 压测扩展**：支持 proximity / group 两种频道、不同距离、丢包乱序模拟和带宽统计。

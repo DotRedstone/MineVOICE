@@ -304,7 +304,9 @@ public final class MineVoiceSettingsScreen extends Screen {
                 + " mic=" + deviceSummary(model.microphoneDevice())
                 + " out=" + deviceSummary(model.outputDevice())
                 + " hud=" + model.hudEnabled()
-                + " debug=" + model.debugInfoLevel());
+                + " debug=" + model.debugInfoLevel()
+                + " "
+                + MineVoiceClientBootstrap.debugConnectionSummary());
     }
 
     private static String deviceSummary(String deviceId) {

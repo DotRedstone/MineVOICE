@@ -33,6 +33,8 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 
+import java.util.Locale;
+
 public final class MineVoiceClientBootstrap {
     private static final ResourceLocation NAMEPLATE_MICROPHONE_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "minevoice", "textures/gui/sprites/microphone_status.png"
@@ -130,6 +132,33 @@ public final class MineVoiceClientBootstrap {
 
     public static VoiceConnectionStatus connectionStatus() {
         return VOICE_CONNECTION_MANAGER.status();
+    }
+
+    public static VoiceNetworkStats voiceNetworkStats() {
+        return VOICE_CONNECTION_MANAGER.networkStats();
+    }
+
+    public static String debugConnectionSummary() {
+        VoiceNetworkStats stats = voiceNetworkStats();
+        return String.format(
+                Locale.ROOT,
+                "status=%s endpoint=%s proto=%d codec=%s up=%ds udp=%.1f/%.1fKiB pkts=%d/%d voice=%.1f/%.1fKiB frames=%d/%d fps=%.1f/%.1f",
+                stats.status(),
+                stats.endpoint(),
+                stats.protocolVersion(),
+                stats.codec(),
+                stats.connectedMillis() / 1000L,
+                stats.udpSentKiB(),
+                stats.udpReceivedKiB(),
+                stats.udpPacketsSent(),
+                stats.udpPacketsReceived(),
+                stats.voiceSentKiB(),
+                stats.voiceReceivedKiB(),
+                stats.voiceFramesSent(),
+                stats.voiceFramesReceived(),
+                stats.voiceFramesSentPerSecond(),
+                stats.voiceFramesReceivedPerSecond()
+        );
     }
 
     public static VoicePlayerDirectory voiceDirectory() {

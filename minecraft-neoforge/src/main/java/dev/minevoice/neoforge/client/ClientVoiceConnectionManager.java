@@ -42,6 +42,15 @@ public final class ClientVoiceConnectionManager {
     private UUID playerId;
     private String serverVoiceCodec = ClientAudioSettings.defaults().voiceCodec();
     private final AtomicLong sequence = new AtomicLong();
+    private final AtomicLong udpPacketsSent = new AtomicLong();
+    private final AtomicLong udpPacketsReceived = new AtomicLong();
+    private final AtomicLong udpBytesSent = new AtomicLong();
+    private final AtomicLong udpBytesReceived = new AtomicLong();
+    private final AtomicLong voiceFramesSent = new AtomicLong();
+    private final AtomicLong voiceFramesReceived = new AtomicLong();
+    private final AtomicLong voicePayloadBytesSent = new AtomicLong();
+    private final AtomicLong voicePayloadBytesReceived = new AtomicLong();
+    private volatile long connectedAtMillis;
     private Thread receiveThread;
     private volatile JavaSoundVoiceAudioPipeline audioPipeline;
 
@@ -59,6 +68,7 @@ public final class ClientVoiceConnectionManager {
         setStatus(VoiceConnectionStatus.CONNECTING);
         try {
             disconnect();
+            resetNetworkStats();
             socket = new DatagramSocket();
             socket.setSoTimeout(1_000);
             serverAddress = InetAddress.getByName(payload.voiceHost());
@@ -77,6 +87,7 @@ public final class ClientVoiceConnectionManager {
             }
 
             running.set(true);
+            connectedAtMillis = System.currentTimeMillis();
             setStatus(VoiceConnectionStatus.CONNECTED);
             resumeAudioAfterDeviceTest();
             receiveThread = new Thread(this::receiveLoop, "minevoice-udp-receive");
@@ -90,6 +101,28 @@ public final class ClientVoiceConnectionManager {
 
     public VoiceConnectionStatus status() {
         return status;
+    }
+
+    public VoiceNetworkStats networkStats() {
+        String endpoint = serverAddress == null ? "none" : serverAddress.getHostAddress() + ":" + serverPort;
+        long connectedMillis = connectedAtMillis <= 0L
+                ? 0L
+                : Math.max(0L, System.currentTimeMillis() - connectedAtMillis);
+        return new VoiceNetworkStats(
+                status,
+                endpoint,
+                protocolVersion,
+                serverVoiceCodec,
+                connectedMillis,
+                udpPacketsSent.get(),
+                udpPacketsReceived.get(),
+                udpBytesSent.get(),
+                udpBytesReceived.get(),
+                voiceFramesSent.get(),
+                voiceFramesReceived.get(),
+                voicePayloadBytesSent.get(),
+                voicePayloadBytesReceived.get()
+        );
     }
 
     public VoiceHudState hudState() {
@@ -159,7 +192,10 @@ public final class ClientVoiceConnectionManager {
 
     private void sendFrame(VoiceFrame frame) {
         try {
-            send(VoicePacketType.VOICE_FRAME, VoiceFramePayloadCodec.encode(frame));
+            byte[] payload = VoiceFramePayloadCodec.encode(frame);
+            send(VoicePacketType.VOICE_FRAME, payload);
+            voiceFramesSent.incrementAndGet();
+            voicePayloadBytesSent.addAndGet(frame.encodedAudio().length);
         } catch (IOException exception) {
             setStatus(VoiceConnectionStatus.ERROR);
         }
@@ -175,6 +211,8 @@ public final class ClientVoiceConnectionManager {
                 JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
                 if (packet.packetType() == VoicePacketType.VOICE_FRAME && pipeline != null && packet.payload().length > 0) {
                     VoiceFrame frame = VoiceFramePayloadCodec.decode(packet.payload());
+                    voiceFramesReceived.incrementAndGet();
+                    voicePayloadBytesReceived.addAndGet(frame.encodedAudio().length);
                     speakerTracker.markSpeaking(frame.senderPlayerId());
                     pipeline.enqueuePlayback(frame);
                 }
@@ -204,6 +242,8 @@ public final class ClientVoiceConnectionManager {
         );
         byte[] bytes = packetCodec.encode(packet);
         socket.send(new DatagramPacket(bytes, bytes.length, serverAddress, serverPort));
+        udpPacketsSent.incrementAndGet();
+        udpBytesSent.addAndGet(bytes.length);
     }
 
     private VoicePacket receive() throws IOException {
@@ -211,6 +251,8 @@ public final class ClientVoiceConnectionManager {
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
         byte[] bytes = Arrays.copyOfRange(packet.getData(), packet.getOffset(), packet.getOffset() + packet.getLength());
+        udpPacketsReceived.incrementAndGet();
+        udpBytesReceived.addAndGet(bytes.length);
         return packetCodec.decode(bytes);
     }
 
@@ -231,6 +273,19 @@ public final class ClientVoiceConnectionManager {
 
     private ClientAudioSettings serverAudioSettings() {
         return settingsStore.load().withVoiceCodec(serverVoiceCodec);
+    }
+
+    private void resetNetworkStats() {
+        sequence.set(0L);
+        udpPacketsSent.set(0L);
+        udpPacketsReceived.set(0L);
+        udpBytesSent.set(0L);
+        udpBytesReceived.set(0L);
+        voiceFramesSent.set(0L);
+        voiceFramesReceived.set(0L);
+        voicePayloadBytesSent.set(0L);
+        voicePayloadBytesReceived.set(0L);
+        connectedAtMillis = 0L;
     }
 
     private void setStatus(VoiceConnectionStatus status) {
