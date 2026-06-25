@@ -11,7 +11,8 @@ public record VoiceServerInfoPayload(
         String voiceHost,
         int voicePort,
         String token,
-        int protocolVersion
+        int protocolVersion,
+        String voiceCodec
 ) implements CustomPacketPayload {
     public static final Type<VoiceServerInfoPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("minevoice", "voice_server_info")
@@ -33,6 +34,7 @@ public record VoiceServerInfoPayload(
         buffer.writeInt(payload.voicePort());
         buffer.writeUtf(payload.token(), 4096);
         buffer.writeInt(payload.protocolVersion());
+        buffer.writeUtf(payload.voiceCodec(), 64);
     }
 
     private static VoiceServerInfoPayload decode(RegistryFriendlyByteBuf buffer) {
@@ -41,7 +43,8 @@ public record VoiceServerInfoPayload(
                 buffer.readUtf(),
                 buffer.readInt(),
                 buffer.readUtf(4096),
-                buffer.readInt()
+                buffer.readInt(),
+                buffer.readUtf(64)
         );
     }
 }

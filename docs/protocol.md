@@ -57,7 +57,7 @@ token 包含 `playerUuid`、`issuedAt`、`expiresAt`、`serverId` 和 HMAC-SHA25
 
 ## VOICE_FRAME payload
 
-`VOICE_FRAME` 的 payload 是一个 encoded audio frame 容器，不要求语音服务器解码或混音。当前有效 codec 仍是 `mock-pcm`，后续 Opus 会替换 `encoded audio` 内容，服务端转发逻辑不变。
+`VOICE_FRAME` 的 payload 是一个 encoded audio frame 容器，不要求语音服务器解码或混音。当前默认 codec 为 `opus`，`mock-pcm` 仅用于调试和 fallback；服务端转发逻辑不关心 encoded audio 的具体格式。
 
 | 类型 | 字段 |
 | --- | --- |
@@ -107,3 +107,5 @@ Local 模式下，同一 JVM 内直接把相同的玩家状态集合写入 embed
 | Client -> Server | `voice_player_status` | 同步本地麦克风静音状态 |
 
 语音队伍当前是在线会话组：最后一名成员离开后自动删除，不持久化。
+
+`voice_server_info` 同时下发服务端选择的 `voiceCodec`。客户端连接后以服务端 codec 为准，避免不同客户端本地配置不一致导致互相无法解码。

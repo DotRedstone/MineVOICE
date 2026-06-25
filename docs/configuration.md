@@ -50,7 +50,7 @@ enableDebugLog=false
 ## 音频和空间配置
 
 ```properties
-voiceCodec=mock
+voiceCodec=opus
 audioPlaybackBackend=auto
 spatialBackend=auto
 enableOcclusion=true
@@ -62,7 +62,7 @@ jitterBufferMs=60
 
 | 配置 | 当前状态 |
 | --- | --- |
-| `voiceCodec` | 当前可用值是 `mock`。`opus` 已作为配置目标保留，但还没有真实 Opus 实现。 |
+| `voiceCodec` | 默认 `opus`，使用纯 Java Concentus Opus。`mock` / `mock-pcm` 仍可用于调试和 fallback。 |
 | `audioPlaybackBackend` | 当前实际使用 Java Sound；`openal` 是后续 backend 目标。 |
 | `spatialBackend` | 当前为基础 pan 空间化；OpenAL/Sound Physics 仍是 planned。 |
 | `enableOcclusion` / `occlusionStrength` / `occlusionLowPass` | 配置位已保留，真实方块遮挡仍待实现。 |
@@ -100,7 +100,7 @@ masterVolume=1.0
 voiceChatVolume=1.0
 microphoneVolume=1.0
 spatialAudioEnabled=true
-voiceCodec=mock
+voiceCodec=opus
 muted=false
 deafened=false
 showDebugConnectionInfo=false

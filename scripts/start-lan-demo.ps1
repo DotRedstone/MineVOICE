@@ -20,6 +20,7 @@ localVoiceAdvertisePort=$VoicePort
 enableLanVoiceServer=true
 sharedSecret=$SharedSecret
 proximityDistance=48
+voiceCodec=opus
 enableDebugLog=true
 "@ | Set-Content -LiteralPath "$hostRun\config\minevoice-server.properties" -Encoding ascii
 
@@ -33,7 +34,7 @@ microphoneVolume=1.0
 activationMode=PUSH_TO_TALK
 voiceActivationThreshold=0.35
 spatialAudioEnabled=true
-voiceCodec=mock
+voiceCodec=opus
 muted=false
 deafened=false
 showDebugConnectionInfo=true

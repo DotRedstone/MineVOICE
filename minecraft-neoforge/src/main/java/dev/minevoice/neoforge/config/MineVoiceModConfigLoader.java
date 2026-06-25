@@ -1,6 +1,7 @@
 package dev.minevoice.neoforge.config;
 
 import dev.minevoice.common.config.VoiceMode;
+import dev.minevoice.common.audio.VoiceCodecFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,7 +36,7 @@ public final class MineVoiceModConfigLoader {
                 intProperty(properties, "proximityDistance", defaults.proximityDistance()),
                 booleanProperty(properties, "enableLanVoiceServer", defaults.enableLanVoiceServer()),
                 booleanProperty(properties, "enableSpatialDebug", defaults.enableSpatialDebug()),
-                properties.getProperty("voiceCodec", defaults.voiceCodec()),
+                VoiceCodecFactory.normalizeCodecName(properties.getProperty("voiceCodec", defaults.voiceCodec())),
                 properties.getProperty("audioPlaybackBackend", defaults.audioPlaybackBackend()),
                 properties.getProperty("spatialBackend", defaults.spatialBackend()),
                 booleanProperty(properties, "enableOcclusion", defaults.enableOcclusion()),

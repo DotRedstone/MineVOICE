@@ -29,6 +29,7 @@ mode=remote
 remoteVoiceHost=127.0.0.1
 remoteVoicePort=$VoicePort
 sharedSecret=$SharedSecret
+voiceCodec=opus
 enableDebugLog=true
 "@ | Set-Content -LiteralPath "$serverRun\config\minevoice-server.properties" -Encoding ascii
 
@@ -53,7 +54,7 @@ microphoneVolume=1.0
 activationMode=PUSH_TO_TALK
 voiceActivationThreshold=0.35
 spatialAudioEnabled=true
-voiceCodec=mock
+voiceCodec=opus
 muted=false
 deafened=false
 showDebugConnectionInfo=true

@@ -108,6 +108,7 @@ public final class MineVoiceClientBootstrap {
                 minecraft.player.displayClientMessage(Component.literal(
                         "MineVOICE: mode=" + payload.mode()
                                 + " proto=" + payload.protocolVersion()
+                                + " codec=" + payload.voiceCodec()
                                 + " activation=" + settings.activationMode()
                                 + " spatial=" + settings.spatialAudioEnabled()
                 ), false);

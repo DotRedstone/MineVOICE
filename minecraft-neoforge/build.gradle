@@ -5,6 +5,13 @@ plugins {
 
 dependencies {
     api project(":common")
+    implementation "io.github.jaredmdobson:concentus:${concentus_version}"
+    jarJar(implementation("io.github.jaredmdobson:concentus:${concentus_version}")) {
+        version {
+            strictly "[${concentus_version},)"
+            prefer concentus_version
+        }
+    }
 }
 
 sourceSets.main.java.srcDir "../common/src/main/java"

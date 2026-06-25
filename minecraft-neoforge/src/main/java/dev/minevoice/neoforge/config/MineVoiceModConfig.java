@@ -38,7 +38,7 @@ public record MineVoiceModConfig(
                 VoiceConstants.DEFAULT_MAX_DISTANCE,
                 true,
                 false,
-                "mock",
+                "opus",
                 "auto",
                 "auto",
                 true,

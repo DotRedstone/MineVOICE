@@ -37,13 +37,16 @@ Local/Remote/LAN demo：
 
 ## Opus 依赖策略
 
-当前没有把第三方 Opus 库打进客户端。原因：
+当前 Opus 路径使用 `io.github.jaredmdobson:concentus`，这是纯 Java Opus 实现，优先避免 native libopus 在 Minecraft 客户端分发时带来的平台加载问题。NeoForge 发行 jar 通过 jarJar 携带该依赖；standalone 和 client-sim 通过 Gradle application 分发传递依赖。
 
-1. Java 21 + Minecraft 客户端分发需要确认跨平台 native 或纯 Java 方案。
-2. 许可证、体积、加载失败 fallback 都需要单独验收。
-3. 语音服务器只转发 encoded frame，codec 可以在客户端侧无痛替换。
+实现边界：
 
-因此当前实现保留 `VoiceCodec` / `VoiceCodecFactory` / `VoiceAudioFormat`，有效 codec 是 `mock-pcm`。接入 Opus 时要先补依赖说明、fallback、带宽对比和双客户端验收。
+1. `VoiceCodecFactory` 默认选择 `opus`，初始化失败时回退 `mock-pcm-fallback`。
+2. 语音服务器只转发 encoded frame，不解码、不混音。
+3. Minecraft 服务端通过 `voice_server_info` 下发 `voiceCodec`，客户端以服务端值为准，避免本地配置不一致。
+4. Opus decoder 是有状态对象，客户端播放端按远端说话者单独维护 decoder。
+
+后续仍需要补真实双客户端带宽对比、Opus 初始化失败提示和更细的 codec debug 统计。
 
 ## OpenAL 策略
 

@@ -62,5 +62,5 @@ MineVOICE local voice endpoint advertised as <host>:24454
 
 - 客户端：`showDebugConnectionInfo=true` 会显示连接状态提示。
 - 服务端：`enableDebugLog=true` 会输出 token、状态同步、UDP 转发等调试日志。
-- codec：当前实际有效实现是 `mock-pcm`；`opus` 仍是 planned。
+- codec：默认 `opus`；服务端通过 `voice_server_info` 下发 codec，客户端 debug verbose 会显示当前 codec。
 - jitter：播放端已有基础 buffer，后续会把 stats 暴露到 HUD 或命令。

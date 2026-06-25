@@ -7,6 +7,7 @@ import dev.minevoice.common.protocol.VoiceFramePayloadCodec;
 import dev.minevoice.common.protocol.VoicePacket;
 import dev.minevoice.common.protocol.VoicePacketCodec;
 import dev.minevoice.common.protocol.VoicePacketType;
+import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.neoforge.client.audio.JavaSoundVoiceAudioPipeline;
 import dev.minevoice.neoforge.client.audio.MinecraftVoiceSpatializer;
 import dev.minevoice.neoforge.network.VoiceServerInfoPayload;
@@ -39,6 +40,7 @@ public final class ClientVoiceConnectionManager {
     private int serverPort;
     private int protocolVersion;
     private UUID playerId;
+    private String serverVoiceCodec = ClientAudioSettings.defaults().voiceCodec();
     private final AtomicLong sequence = new AtomicLong();
     private Thread receiveThread;
     private volatile JavaSoundVoiceAudioPipeline audioPipeline;
@@ -62,6 +64,7 @@ public final class ClientVoiceConnectionManager {
             serverAddress = InetAddress.getByName(payload.voiceHost());
             serverPort = payload.voicePort();
             protocolVersion = payload.protocolVersion();
+            serverVoiceCodec = VoiceCodecFactory.normalizeCodecName(payload.voiceCodec());
             playerId = AuthTokenCodec.decodeFromString(payload.token()).playerUuid();
             send(VoicePacketType.HELLO, new byte[0]);
             receive();
@@ -134,7 +137,7 @@ public final class ClientVoiceConnectionManager {
             }
             audioPipeline = new JavaSoundVoiceAudioPipeline(
                     playerId,
-                    settingsStore::load,
+                    this::serverAudioSettings,
                     this::sendFrame,
                     hudState::setMicrophoneActivity,
                     spatializer,
@@ -224,6 +227,10 @@ public final class ClientVoiceConnectionManager {
         if (pipeline != null) {
             pipeline.stop();
         }
+    }
+
+    private ClientAudioSettings serverAudioSettings() {
+        return settingsStore.load().withVoiceCodec(serverVoiceCodec);
     }
 
     private void setStatus(VoiceConnectionStatus status) {

@@ -1,45 +1,91 @@
 # MineVOICE TODO
 
-本清单按可测试产品优先级排序。`[x]` 表示已有代码路径和本地编译验证；仍需真实多人手测的项会单独标注。
+本清单按可测试产品优先级排序。`[x]` 表示已有代码路径并通过本地编译验证；仍需要真实多人手测的项会单独标注。
 
-## P0: 双模式联机稳定性
+当前基线：`v0.1.0-alpha.3`。MineVOICE 继续保持双模式定位：Local 适合小服、朋友服和 Open to LAN；Remote 适合多人服、独立节点和 Docker 部署。玩家主路径仍然是进服后由 Minecraft 服务端自动下发语音 endpoint 和短期 token，不让玩家手动填写语音服务器。
+
+## P0: Alpha.4 必须先补的回归
+
+- [ ] **真实双客户端 Local 回归**：覆盖 `mode=local` 独立 Minecraft 服务端、两个真实客户端自动连接、范围语音、队伍语音、静音、屏蔽听音、断开重连和停服释放 UDP 端口。
+- [ ] **真实双客户端 Remote 回归**：确认 standalone voice server、Minecraft 服务端和两个真实客户端在 alpha.3 后不回归。
+- [ ] **真实 Open to LAN 回归**：A 开单人世界并 Open to LAN，B 从局域网或虚拟组网加入，确认 endpoint/token 自动下发、范围语音和队伍语音可用。
+- [ ] **发布验收记录模板**：每个 tag 记录 Minecraft/NeoForge 版本、Java 版本、Local/Remote/LAN 测试结果、已知问题和回滚目标。
+- [ ] **Windows 测试 runner 修复**：解决 Unicode 工作目录导致 JUnit worker 找不到测试类的问题，恢复可靠的单元测试执行。
+
+## P1: 双模式联机稳定性
 
 - [x] **Remote 独立语音服务端保持可用**：standalone UDP 鉴权、session、relay、SERVER_STATE 路由继续保留。
-- [x] **Local embedded voice server 初步实现**：`mode=local` 时 Minecraft 服务端 JVM 内启动 UDP voice server，停服关闭 socket。仍需双真实客户端手动验收。
+- [x] **Local embedded voice server 初步实现**：`mode=local` 时 Minecraft 服务端 JVM 内启动 UDP voice server，停服关闭 socket。
 - [x] **Local 状态同步**：Local 模式不再向自己发 UDP `SERVER_STATE`，而是同 JVM 更新 session registry。
 - [x] **advertiseHost 自动处理**：`auto` 避免下发 `0.0.0.0`，本机连接使用 loopback，LAN 优先选择 site-local 地址。多网卡仍建议手动配置。
-- [x] **Local/Remote/LAN demo 脚本**：新增 `start-local-demo.ps1`、`start-remote-demo.ps1`、`start-lan-demo.ps1`。
-- [ ] **真实双客户端回归**：覆盖连接、范围语音、队伍语音、静音、屏蔽听音、断开重连和停服释放端口。
-- [ ] **Windows 测试 runner 修复**：解决 Unicode 工作目录导致 JUnit worker 找不到测试类的问题。
+- [x] **Local/Remote/LAN demo 脚本**：已有 `start-local-demo.ps1`、`start-remote-demo.ps1`、`start-lan-demo.ps1`。
+- [ ] **Local 生命周期加固**：覆盖 reload、停服、端口占用、重复启动、异常关闭后的 socket/thread 释放。
+- [ ] **LAN host 选择诊断**：当 `auto` 无法可靠选择地址时，在日志和 UI 调试页提示手动配置 `localVoiceAdvertiseHost`。
+- [ ] **Remote 错误分流日志**：明确区分 UDP 不通、sharedSecret 不一致、token 过期、endpoint 配置错误和协议版本不匹配。
 
-## P1: 音频链路
+## P2: 音频链路
 
 - [x] **基础 jitter buffer**：按说话者和 sequence 维护缓冲，支持乱序重排、迟到包丢弃和丢包跳过。
-- [x] **codec 抽象**：保留 `VoiceCodec`、`VoiceCodecFactory`、`VoiceAudioFormat`，当前有效实现为 `mock-pcm`。
-- [ ] **Opus 编解码**：选择 Java 21 / Minecraft 分发友好的方案，补 fallback、带宽对比和双客户端验收。
-- [ ] **语音激活优化**：补 hysteresis、噪声门和 UI 可解释反馈。
-- [ ] **降噪 / 回声消除接口**：先做可替换 DSP 接口，避免阻塞游戏线程。
+- [x] **codec 抽象**：保留 `VoiceCodec`、`VoiceCodecFactory`、`VoiceAudioFormat`，当前默认实现为 `opus`，`mock-pcm` 作为 fallback。
+- [x] **Opus 编解码接入**：使用纯 Java Concentus Opus，避免 native 分发问题；仍需真实双客户端听感和带宽验收。
+- [x] **Encoded frame 格式确认**：`VOICE_FRAME` 明确承载 encoded audio frame，服务端只转发、不解码、不混音。
+- [x] **Opus fallback**：Opus 初始化失败时回退 `mock-pcm-fallback` / Java Sound 可测试路径。
+- [ ] **带宽统计**：debug 显示 codec、send/receive bytes、frames/sec，并对比 Opus 与裸 PCM。
+- [ ] **语音激活优化**：补 hysteresis、噪声门、触发阈值说明，并区分公共频道和队伍频道的触发配置。
+- [ ] **降噪 / 回声消除接口**：先做可替换 DSP 接口，不阻塞游戏线程；真实算法后续接入。
 
-## P2: 空间语音
+## P3: 空间语音
 
 - [x] **基础 pan 修正**：左右声道 pan 使用水平距离归一化，音量仍按 3D 距离衰减。
-- [ ] **空间 debug**：暴露 speaker、distance、pan、gain、dimension、channel。
-- [ ] **OpenAL backend**：实现 per-speaker source、listener pose、资源释放和 Java Sound fallback。
+- [ ] **空间 debug**：暴露 speaker、distance、pan、gain、sameDimension、channel、occlusion、backend。
+- [ ] **空间方向手测**：B 在 A 左/右/前/后和绕圈移动时，确认 pan 不反、变化平滑。
+- [ ] **OpenAL backend 抽象**：补 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend`、listener/source provider。
+- [ ] **OpenAL per-speaker source**：每个说话者独立 source，source 跟随玩家位置，listener 跟随相机位置和朝向。
+- [ ] **OpenAL 资源释放**：玩家离开、断开、停止说话、关闭世界时释放 source，OpenAL 初始化失败回退 Java Sound。
 - [ ] **基础遮挡和低通**：基于 listener/speaker 之间的方块采样计算 muffled gain / low-pass。
-- [ ] **Sound Physics optional compat**：只检测和预留 backend，不引入硬依赖。
+- [ ] **遮挡性能保护**：采样频率、缓存、最大距离和最大方块数量要可控，不能造成客户端卡顿。
+- [ ] **Sound Physics optional compat skeleton**：只检测安装和预留 backend，不引入硬依赖，不调用不稳定内部 API。
 
-## P3: UI / HUD
+## P4: UI / HUD
 
 - [x] **基础 MineVOICE 面板和设置界面**：按 `O` 打开，支持设备设置、测试输入/输出、静音、屏蔽听音。
-- [x] **说话者头像 HUD**：右下显示最近说话玩家头像；队伍成员在左下显示。
-- [ ] **名牌旁图标渲染**：当前仍是 name tag 文字符号，后续改为小图标布局，避免遮挡原版名牌。
-- [ ] **队伍 HUD 细化**：显示成员连接、静音、说话、按住 `G` 的更清晰反馈。
-- [ ] **UI 视觉统一**：继续基于原版容器边缘风格打磨，不复制第三方模组资源。
+- [x] **频道界面重做**：公共/队伍 tab、玩家头像、玩家音量、玩家静音、队伍密码、搜索和滚动列表已具备基础路径。
+- [x] **HUD 简化路径**：左下角保持麦克风 / 扬声器 / 闭麦 / 关闭听筒状态提示。
+- [ ] **名牌旁图标渲染**：把当前 name tag 文字符号改为真正的小图标布局，固定顺序 speaking / muted / deafened / group。
+- [ ] **队伍 HUD 细化**：显示成员连接、静音、说话、按住 `G` 的反馈；HUD 不要遮挡核心画面。
+- [ ] **频道页视觉复查**：继续按原版社交界面和原版容器质感微调边框、内嵌列表、搜索框、滚动条和按钮间距。
+- [ ] **UI 开关补齐**：显示/隐藏 HUD、图标大小、头像位置、调试信息等级、空间 debug 显示开关。
+- [ ] **设备切换回归**：耳机插拔、默认麦克风切换、默认扬声器切换、设备释放和恢复需要真实 Windows 手测。
 
-## P4: 运维和发布
+## P5: 诊断和腐竹工具
+
+- [ ] **管理命令**：实现 `/minevoice status`、`/minevoice debug`、`/minevoice reload`、`/minevoice test-endpoint`。
+- [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率。
+- [ ] **服务端诊断日志**：针对 `127.0.0.1`、Docker 容器名、UDP 端口未放行、sharedSecret 不一致给出明确提示。
+- [ ] **debug 等级整理**：默认不刷屏；basic 显示关键状态，verbose 才显示 mixer id、packet、spatial 细节。
+- [ ] **client-sim 压测扩展**：支持 proximity / group 两种频道、不同距离、丢包乱序模拟和带宽统计。
+
+## P6: 文档和发布
 
 - [x] **自动发布**：推送 `v*` 标签会构建 NeoForge jar、standalone zip、Docker 镜像和 GitHub Pre-release。
 - [x] **Docker standalone 示例**：只用于语音服务器，UDP 端口和 `MINEVOICE_SHARED_SECRET` 环境变量明确。
-- [ ] **管理命令**：`/minevoice status`、`debug`、`reload`、`test-endpoint`。
-- [ ] **诊断指标**：ping、packet loss、jitter stats、codec、playback backend、UDP 速率。
-- [ ] **发布验收记录**：每个 tag 记录 Minecraft/NeoForge 版本、双客户端结果、已知问题和回滚版本。
+- [x] **README alpha.3 版本链接**：当前公开版本指向 `v0.1.0-alpha.3`。
+- [ ] **docs/configuration.md 更新**：补 `voiceCodec`、`audioPlaybackBackend`、`spatialBackend`、`enableOcclusion`、`jitterBufferMs`、`enableSpatialDebug`。
+- [ ] **docs/deployment.md 更新**：补 Local 独立服务端、Open to LAN、Remote、Docker、advertiseHost 常见错误和 sharedSecret 安全说明。
+- [ ] **docs/demo.md 更新**：补 Remote/Local/LAN 双客户端脚本、空间方向测试、HUD 状态验证、Opus/jitter/OpenAL debug 查看方式。
+- [ ] **docs/protocol.md 更新**：说明 VOICE_FRAME payload 是 encoded audio frame，协议版本和 codec negotiation 规则要明确。
+- [ ] **docs/development.md 更新**：说明 Opus/OpenAL 依赖选择、fallback 策略、Sound Physics optional compat 边界。
+- [ ] **docs/roadmap.md 更新**：把下一轮 Alpha 拆成 Opus、OpenAL、遮挡、诊断工具和真实双客户端验收。
+
+## 后续建议 commit 拆分
+
+- `test(client): 补充双客户端回归验证记录`
+- `feat(audio): 接入 Opus 编解码链路`
+- `feat(audio): 完善语音抖动缓冲统计`
+- `fix(spatial): 补充空间语音调试信息`
+- `feat(audio): 添加 OpenAL 位置音源后端`
+- `feat(spatial): 添加基础遮挡与低通接口`
+- `feat(client): 渲染名牌旁语音状态图标`
+- `feat(client): 细化队伍 HUD 状态反馈`
+- `feat(server): 添加 MineVOICE 诊断命令`
+- `docs(demo): 补充 Alpha 双模式验收流程`

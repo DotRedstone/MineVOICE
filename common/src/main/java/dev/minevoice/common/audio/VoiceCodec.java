@@ -1,7 +1,7 @@
 package dev.minevoice.common.audio;
 
 /**
- * Encodes and decodes voice frames. Production code should provide an Opus implementation.
+ * Encodes outgoing voice frames and creates per-speaker decoders for incoming streams.
  */
 public interface VoiceCodec {
     default String codecName() {
@@ -11,4 +11,8 @@ public interface VoiceCodec {
     byte[] encode(byte[] pcmSamples);
 
     byte[] decode(byte[] encodedAudio);
+
+    default VoiceDecoder createDecoder() {
+        return this::decode;
+    }
 }

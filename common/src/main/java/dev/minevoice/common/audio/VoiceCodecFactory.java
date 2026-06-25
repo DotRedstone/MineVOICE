@@ -5,13 +5,29 @@ public final class VoiceCodecFactory {
     }
 
     public static VoiceCodec create(String configuredCodec) {
-        return new MockVoiceCodec(effectiveCodecName(configuredCodec));
+        String codecName = normalizeCodecName(configuredCodec);
+        if ("opus".equals(codecName)) {
+            try {
+                return new OpusVoiceCodec(VoiceAudioFormat.narrowbandVoice());
+            } catch (RuntimeException | LinkageError exception) {
+                return new MockVoiceCodec("mock-pcm-fallback");
+            }
+        }
+        return new MockVoiceCodec();
     }
 
     public static String effectiveCodecName(String configuredCodec) {
-        if ("opus".equalsIgnoreCase(configuredCodec)) {
-            return "mock-pcm-opus-placeholder";
+        return create(configuredCodec).codecName();
+    }
+
+    public static String normalizeCodecName(String configuredCodec) {
+        if (configuredCodec == null || configuredCodec.isBlank()) {
+            return "opus";
         }
-        return "mock-pcm";
+        String normalized = configuredCodec.trim().toLowerCase();
+        if ("opus".equals(normalized)) {
+            return "opus";
+        }
+        return "mock";
     }
 }

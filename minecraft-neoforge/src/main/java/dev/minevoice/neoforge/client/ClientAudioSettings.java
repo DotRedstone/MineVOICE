@@ -1,5 +1,6 @@
 package dev.minevoice.neoforge.client;
 
+import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
 
 public record ClientAudioSettings(
@@ -38,7 +39,7 @@ public record ClientAudioSettings(
                 VoiceActivationMode.PUSH_TO_TALK,
                 0.35F,
                 true,
-                "mock",
+                "opus",
                 false,
                 false,
                 true,
@@ -62,6 +63,7 @@ public record ClientAudioSettings(
         hudAvatarAnchor = hudAvatarAnchor == null ? HudAvatarAnchor.BOTTOM_RIGHT : hudAvatarAnchor;
         hudIconSize = MineVoiceHudStyle.clampIconSize(hudIconSize);
         debugInfoLevel = debugInfoLevel == null ? DebugInfoLevel.OFF : debugInfoLevel;
+        voiceCodec = VoiceCodecFactory.normalizeCodecName(voiceCodec);
     }
 
     public boolean showDebugConnectionInfo() {

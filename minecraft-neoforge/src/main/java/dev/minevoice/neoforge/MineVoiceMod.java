@@ -117,7 +117,8 @@ public final class MineVoiceMod {
                 host,
                 port,
                 AuthTokenCodec.encodeToString(token),
-                VoiceProtocolVersion.CURRENT
+                VoiceProtocolVersion.CURRENT,
+                config.voiceCodec()
         ));
         broadcastVoiceRoster();
         publishVoiceState(player.server);
