@@ -11,7 +11,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -24,6 +26,7 @@ public final class VoiceServerStateCodec {
     private static final int MAX_PLAYER_NAME_BYTES = 64;
     private static final int MAX_DIMENSION_BYTES = 256;
     private static final int MAX_GROUP_NAME_BYTES = 128;
+    private static final int MAX_MUTED_PEERS = 2_048;
 
     private VoiceServerStateCodec() {
     }
@@ -76,6 +79,13 @@ public final class VoiceServerStateCodec {
                 }
                 writeString(data, player.groupName(), MAX_GROUP_NAME_BYTES);
                 data.writeBoolean(player.muted());
+                if (player.mutedPeers().size() > MAX_MUTED_PEERS) {
+                    throw new IllegalArgumentException("too many muted peers in voice player state");
+                }
+                data.writeInt(player.mutedPeers().size());
+                for (UUID mutedPeer : player.mutedPeers()) {
+                    writeUuid(data, mutedPeer);
+                }
             }
             data.flush();
             return output.toByteArray();
@@ -102,7 +112,15 @@ public final class VoiceServerStateCodec {
                 UUID groupId = data.readBoolean() ? readUuid(data) : null;
                 String groupName = readString(data, MAX_GROUP_NAME_BYTES);
                 boolean muted = data.readBoolean();
-                players.add(new VoicePlayerState(playerId, playerName, dimensionId, x, y, z, groupId, groupName, muted));
+                int mutedPeerCount = data.readInt();
+                if (mutedPeerCount < 0 || mutedPeerCount > MAX_MUTED_PEERS) {
+                    throw new IllegalArgumentException("invalid muted peer count: " + mutedPeerCount);
+                }
+                Set<UUID> mutedPeers = new LinkedHashSet<>();
+                for (int peerIndex = 0; peerIndex < mutedPeerCount; peerIndex++) {
+                    mutedPeers.add(readUuid(data));
+                }
+                players.add(new VoicePlayerState(playerId, playerName, dimensionId, x, y, z, groupId, groupName, muted, mutedPeers));
             }
             if (data.available() != 0) {
                 throw new IllegalArgumentException("unexpected trailing bytes in voice server state snapshot");

@@ -1,6 +1,7 @@
 package dev.minevoice.common.protocol;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -15,12 +16,14 @@ public record VoicePlayerState(
         double z,
         UUID groupId,
         String groupName,
-        boolean muted
+        boolean muted,
+        Set<UUID> mutedPeers
 ) {
     public VoicePlayerState {
         Objects.requireNonNull(playerId, "playerId");
         playerName = Objects.requireNonNullElse(playerName, "");
         dimensionId = Objects.requireNonNullElse(dimensionId, "");
         groupName = Objects.requireNonNullElse(groupName, "");
+        mutedPeers = mutedPeers == null ? Set.of() : Set.copyOf(mutedPeers);
     }
 }

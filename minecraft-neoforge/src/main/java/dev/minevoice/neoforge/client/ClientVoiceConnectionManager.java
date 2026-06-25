@@ -21,10 +21,13 @@ import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 public final class ClientVoiceConnectionManager {
     private final VoicePacketCodec packetCodec = new BinaryVoicePacketCodec();
     private final ClientSettingsStore settingsStore;
+    private final Function<UUID, Float> playerVolumeSupplier;
+    private final Function<UUID, Boolean> playerMutedSupplier;
     private final VoiceHudState hudState = new VoiceHudState();
     private final VoiceSpeakerTracker speakerTracker = new VoiceSpeakerTracker();
     private final MinecraftVoiceSpatializer spatializer = new MinecraftVoiceSpatializer();
@@ -40,8 +43,14 @@ public final class ClientVoiceConnectionManager {
     private Thread receiveThread;
     private volatile JavaSoundVoiceAudioPipeline audioPipeline;
 
-    public ClientVoiceConnectionManager(ClientSettingsStore settingsStore) {
+    public ClientVoiceConnectionManager(
+            ClientSettingsStore settingsStore,
+            Function<UUID, Float> playerVolumeSupplier,
+            Function<UUID, Boolean> playerMutedSupplier
+    ) {
         this.settingsStore = settingsStore;
+        this.playerVolumeSupplier = playerVolumeSupplier;
+        this.playerMutedSupplier = playerMutedSupplier;
     }
 
     public void connectFromServerPayload(VoiceServerInfoPayload payload) {
@@ -128,7 +137,9 @@ public final class ClientVoiceConnectionManager {
                     settingsStore::load,
                     this::sendFrame,
                     hudState::setMicrophoneActivity,
-                    spatializer
+                    spatializer,
+                    playerVolumeSupplier,
+                    playerMutedSupplier
             );
             audioPipeline.start();
         }

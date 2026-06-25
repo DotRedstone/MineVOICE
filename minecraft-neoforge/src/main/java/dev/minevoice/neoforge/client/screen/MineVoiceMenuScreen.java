@@ -4,9 +4,9 @@ import dev.minevoice.neoforge.client.ClientAudioSettings;
 import dev.minevoice.neoforge.client.MineVoiceClientBootstrap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.SpriteIconButton;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -31,6 +31,7 @@ public final class MineVoiceMenuScreen extends Screen {
     );
 
     private final Screen parent;
+
     public MineVoiceMenuScreen(Screen parent) {
         super(Component.translatable("screen.minevoice.menu"));
         this.parent = parent;
@@ -78,8 +79,7 @@ public final class MineVoiceMenuScreen extends Screen {
         int left = panelLeft();
         int top = panelTop();
         Minecraft minecraft = Minecraft.getInstance();
-        Component title = Component.literal("MineVOICE");
-        graphics.drawCenteredString(minecraft.font, title, left + PANEL_WIDTH / 2, top + 7, 0xFF404040);
+        graphics.drawCenteredString(minecraft.font, Component.literal("MineVOICE"), left + PANEL_WIDTH / 2, top + 7, 0xFF404040);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 

@@ -1,7 +1,10 @@
 package dev.minevoice.neoforge.client.ui;
 
 import dev.minevoice.neoforge.client.ClientAudioSettings;
+import dev.minevoice.neoforge.client.DebugInfoLevel;
+import dev.minevoice.neoforge.client.HudAvatarAnchor;
 import dev.minevoice.neoforge.client.VoiceActivationMode;
+import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
 
 public final class MineVoiceSettingsScreenModel {
     private String microphoneDevice;
@@ -12,26 +15,42 @@ public final class MineVoiceSettingsScreenModel {
     private float microphoneVolume;
     private VoiceActivationMode activationMode;
     private float voiceActivationThreshold;
+    private VoiceActivationMode groupActivationMode;
+    private float groupVoiceActivationThreshold;
     private boolean spatialAudioEnabled;
     private String voiceCodec;
     private boolean muted;
     private boolean deafened;
-    private boolean showDebugConnectionInfo;
+    private boolean hudEnabled;
+    private boolean speakerHudEnabled;
+    private boolean groupHudEnabled;
+    private boolean nameplateIconsEnabled;
+    private HudAvatarAnchor hudAvatarAnchor;
+    private int hudIconSize;
+    private DebugInfoLevel debugInfoLevel;
 
     private MineVoiceSettingsScreenModel(ClientAudioSettings settings) {
-        this.microphoneDevice = settings.microphoneDevice();
-        this.outputDevice = settings.outputDevice();
-        this.pushToTalkKey = settings.pushToTalkKey();
-        this.masterVolume = settings.masterVolume();
-        this.voiceChatVolume = settings.voiceChatVolume();
-        this.microphoneVolume = settings.microphoneVolume();
-        this.activationMode = settings.activationMode();
-        this.voiceActivationThreshold = settings.voiceActivationThreshold();
-        this.spatialAudioEnabled = settings.spatialAudioEnabled();
-        this.voiceCodec = settings.voiceCodec();
-        this.muted = settings.muted();
-        this.deafened = settings.deafened();
-        this.showDebugConnectionInfo = settings.showDebugConnectionInfo();
+        microphoneDevice = settings.microphoneDevice();
+        outputDevice = settings.outputDevice();
+        pushToTalkKey = settings.pushToTalkKey();
+        masterVolume = settings.masterVolume();
+        voiceChatVolume = settings.voiceChatVolume();
+        microphoneVolume = settings.microphoneVolume();
+        activationMode = settings.activationMode();
+        voiceActivationThreshold = settings.voiceActivationThreshold();
+        groupActivationMode = settings.groupActivationMode();
+        groupVoiceActivationThreshold = settings.groupVoiceActivationThreshold();
+        spatialAudioEnabled = settings.spatialAudioEnabled();
+        voiceCodec = settings.voiceCodec();
+        muted = settings.muted();
+        deafened = settings.deafened();
+        hudEnabled = settings.hudEnabled();
+        speakerHudEnabled = settings.speakerHudEnabled();
+        groupHudEnabled = settings.groupHudEnabled();
+        nameplateIconsEnabled = settings.nameplateIconsEnabled();
+        hudAvatarAnchor = settings.hudAvatarAnchor();
+        hudIconSize = settings.hudIconSize();
+        debugInfoLevel = settings.debugInfoLevel();
     }
 
     public static MineVoiceSettingsScreenModel from(ClientAudioSettings settings) {
@@ -48,29 +67,45 @@ public final class MineVoiceSettingsScreenModel {
                 microphoneVolume,
                 activationMode,
                 voiceActivationThreshold,
+                groupActivationMode,
+                groupVoiceActivationThreshold,
                 spatialAudioEnabled,
                 voiceCodec,
                 muted,
                 deafened,
-                showDebugConnectionInfo
+                hudEnabled,
+                speakerHudEnabled,
+                groupHudEnabled,
+                nameplateIconsEnabled,
+                hudAvatarAnchor,
+                hudIconSize,
+                debugInfoLevel
         );
     }
 
     public void resetToDefaults() {
-        ClientAudioSettings defaults = ClientAudioSettings.defaults();
-        microphoneDevice = defaults.microphoneDevice();
-        outputDevice = defaults.outputDevice();
-        pushToTalkKey = defaults.pushToTalkKey();
-        masterVolume = defaults.masterVolume();
-        voiceChatVolume = defaults.voiceChatVolume();
-        microphoneVolume = defaults.microphoneVolume();
-        activationMode = defaults.activationMode();
-        voiceActivationThreshold = defaults.voiceActivationThreshold();
-        spatialAudioEnabled = defaults.spatialAudioEnabled();
-        voiceCodec = defaults.voiceCodec();
-        muted = defaults.muted();
-        deafened = defaults.deafened();
-        showDebugConnectionInfo = defaults.showDebugConnectionInfo();
+        MineVoiceSettingsScreenModel defaults = from(ClientAudioSettings.defaults());
+        microphoneDevice = defaults.microphoneDevice;
+        outputDevice = defaults.outputDevice;
+        pushToTalkKey = defaults.pushToTalkKey;
+        masterVolume = defaults.masterVolume;
+        voiceChatVolume = defaults.voiceChatVolume;
+        microphoneVolume = defaults.microphoneVolume;
+        activationMode = defaults.activationMode;
+        voiceActivationThreshold = defaults.voiceActivationThreshold;
+        groupActivationMode = defaults.groupActivationMode;
+        groupVoiceActivationThreshold = defaults.groupVoiceActivationThreshold;
+        spatialAudioEnabled = defaults.spatialAudioEnabled;
+        voiceCodec = defaults.voiceCodec;
+        muted = defaults.muted;
+        deafened = defaults.deafened;
+        hudEnabled = defaults.hudEnabled;
+        speakerHudEnabled = defaults.speakerHudEnabled;
+        groupHudEnabled = defaults.groupHudEnabled;
+        nameplateIconsEnabled = defaults.nameplateIconsEnabled;
+        hudAvatarAnchor = defaults.hudAvatarAnchor;
+        hudIconSize = defaults.hudIconSize;
+        debugInfoLevel = defaults.debugInfoLevel;
     }
 
     public String titleKey() {
@@ -141,6 +176,22 @@ public final class MineVoiceSettingsScreenModel {
         this.voiceActivationThreshold = clampVolume(voiceActivationThreshold);
     }
 
+    public VoiceActivationMode groupActivationMode() {
+        return groupActivationMode;
+    }
+
+    public void setGroupActivationMode(VoiceActivationMode groupActivationMode) {
+        this.groupActivationMode = groupActivationMode;
+    }
+
+    public float groupVoiceActivationThreshold() {
+        return groupVoiceActivationThreshold;
+    }
+
+    public void setGroupVoiceActivationThreshold(float groupVoiceActivationThreshold) {
+        this.groupVoiceActivationThreshold = clampVolume(groupVoiceActivationThreshold);
+    }
+
     public boolean spatialAudioEnabled() {
         return spatialAudioEnabled;
     }
@@ -165,12 +216,36 @@ public final class MineVoiceSettingsScreenModel {
         this.deafened = deafened;
     }
 
-    public boolean showDebugConnectionInfo() {
-        return showDebugConnectionInfo;
+    public boolean hudEnabled() {
+        return hudEnabled;
     }
 
-    public void setShowDebugConnectionInfo(boolean showDebugConnectionInfo) {
-        this.showDebugConnectionInfo = showDebugConnectionInfo;
+    public void setHudEnabled(boolean hudEnabled) {
+        this.hudEnabled = hudEnabled;
+    }
+
+    public boolean nameplateIconsEnabled() {
+        return nameplateIconsEnabled;
+    }
+
+    public void setNameplateIconsEnabled(boolean nameplateIconsEnabled) {
+        this.nameplateIconsEnabled = nameplateIconsEnabled;
+    }
+
+    public int hudIconSize() {
+        return hudIconSize;
+    }
+
+    public void setHudIconSize(int hudIconSize) {
+        this.hudIconSize = MineVoiceHudStyle.clampIconSize(hudIconSize);
+    }
+
+    public DebugInfoLevel debugInfoLevel() {
+        return debugInfoLevel;
+    }
+
+    public void setDebugInfoLevel(DebugInfoLevel debugInfoLevel) {
+        this.debugInfoLevel = debugInfoLevel;
     }
 
     private static float clampVolume(float value) {

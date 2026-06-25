@@ -35,6 +35,11 @@ public final class MineVoicePayloads {
                 VoicePlayerStatusPayload.STREAM_CODEC,
                 (payload, context) -> MineVoiceMod.handlePlayerStatus((ServerPlayer) context.player(), payload)
         );
+        registrar.playToServer(
+                VoicePeerMutePayload.TYPE,
+                VoicePeerMutePayload.STREAM_CODEC,
+                (payload, context) -> MineVoiceMod.handlePeerMute((ServerPlayer) context.player(), payload)
+        );
     }
 
     private static void handleVoiceServerInfo(VoiceServerInfoPayload payload) {

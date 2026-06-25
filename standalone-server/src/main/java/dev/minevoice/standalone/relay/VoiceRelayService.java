@@ -42,6 +42,9 @@ public final class VoiceRelayService {
         if (recipient == null) {
             return false;
         }
+        if (sender.mutedPeers().contains(recipient.playerId()) || recipient.mutedPeers().contains(sender.playerId())) {
+            return false;
+        }
         if (channel == VoiceChannel.GROUP) {
             return sender.groupId() != null && sender.groupId().equals(recipient.groupId());
         }

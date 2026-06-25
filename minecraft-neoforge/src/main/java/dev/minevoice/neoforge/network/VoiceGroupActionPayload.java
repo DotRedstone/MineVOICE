@@ -7,7 +7,12 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.UUID;
 
-public record VoiceGroupActionPayload(VoiceGroupAction action, UUID groupId, String groupName) implements CustomPacketPayload {
+public record VoiceGroupActionPayload(
+        VoiceGroupAction action,
+        UUID groupId,
+        String groupName,
+        String password
+) implements CustomPacketPayload {
     public static final Type<VoiceGroupActionPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("minevoice", "voice_group_action")
     );
@@ -29,11 +34,12 @@ public record VoiceGroupActionPayload(VoiceGroupAction action, UUID groupId, Str
             buffer.writeLong(payload.groupId().getLeastSignificantBits());
         }
         buffer.writeUtf(payload.groupName() == null ? "" : payload.groupName(), 64);
+        buffer.writeUtf(payload.password() == null ? "" : payload.password(), 128);
     }
 
     private static VoiceGroupActionPayload decode(RegistryFriendlyByteBuf buffer) {
         VoiceGroupAction action = buffer.readEnum(VoiceGroupAction.class);
         UUID groupId = buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null;
-        return new VoiceGroupActionPayload(action, groupId, buffer.readUtf(64));
+        return new VoiceGroupActionPayload(action, groupId, buffer.readUtf(64), buffer.readUtf(128));
     }
 }

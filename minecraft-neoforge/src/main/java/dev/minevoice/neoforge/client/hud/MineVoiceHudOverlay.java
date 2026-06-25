@@ -11,15 +11,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
 public final class MineVoiceHudOverlay {
-    // Keep the local voice state as a single unobtrusive status icon, matching the
-    // convention players already know from established voice-chat mods.
     private static final int LEFT = 16;
+    private static final int BOTTOM = 16;
     private static final int ICON_SIZE = 16;
     private static final ResourceLocation MICROPHONE_ICON = ResourceLocation.fromNamespaceAndPath(
             "minevoice", "microphone_status"
     );
     private static final ResourceLocation MICROPHONE_MUTED_ICON = ResourceLocation.fromNamespaceAndPath(
             "minevoice", "microphone_muted"
+    );
+    private static final ResourceLocation SPEAKER_ICON = ResourceLocation.fromNamespaceAndPath(
+            "minevoice", "speaker_status"
     );
     private static final ResourceLocation SPEAKER_MUTED_ICON = ResourceLocation.fromNamespaceAndPath(
             "minevoice", "speaker_muted"
@@ -36,30 +38,27 @@ public final class MineVoiceHudOverlay {
             VoiceSpeakerTracker speakers
     ) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.options.hideGui) {
+        if (minecraft.player == null || minecraft.options.hideGui || !settings.hudEnabled()) {
             return;
         }
 
         GuiGraphics graphics = event.getGuiGraphics();
-        int top = graphics.guiHeight() - ICON_SIZE - 16;
-        ResourceLocation icon = currentHudIcon(state, settings);
-        if (icon != null) {
-            graphics.blitSprite(icon, LEFT, top, ICON_SIZE, ICON_SIZE);
-        }
-        VoiceParticipantOverlay.render(graphics, directory, speakers, top);
+        int top = graphics.guiHeight() - ICON_SIZE - BOTTOM;
+        graphics.blitSprite(currentHudIcon(state, settings), LEFT, top, ICON_SIZE, ICON_SIZE);
     }
 
     private static ResourceLocation currentHudIcon(VoiceHudState state, ClientAudioSettings settings) {
-        if (state.connectionStatus() == VoiceConnectionStatus.AUTH_FAILED
-                || state.connectionStatus() == VoiceConnectionStatus.ERROR) {
-            return MICROPHONE_MUTED_ICON;
-        }
         if (settings.deafened()) {
             return SPEAKER_MUTED_ICON;
         }
-        if (settings.muted()) {
+        if (settings.muted()
+                || state.connectionStatus() == VoiceConnectionStatus.AUTH_FAILED
+                || state.connectionStatus() == VoiceConnectionStatus.ERROR) {
             return MICROPHONE_MUTED_ICON;
         }
-        return state.transmitting() ? MICROPHONE_ICON : null;
+        if (state.transmitting()) {
+            return MICROPHONE_ICON;
+        }
+        return SPEAKER_ICON;
     }
 }

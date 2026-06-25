@@ -41,6 +41,42 @@ public final class MineVoicePanelStyle {
         }
     }
 
+    public static void renderInset(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFF8A8A8A);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFFB6B6B6);
+        graphics.fill(x, y, x + width, y + 1, 0xFF404040);
+        graphics.fill(x, y, x + 1, y + height, 0xFF404040);
+        graphics.fill(x, y + height - 1, x + width, y + height, 0xFFFFFFFF);
+        graphics.fill(x + width - 1, y, x + width, y + height, 0xFFFFFFFF);
+    }
+
+    public static void renderListRow(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFF1E1E1E);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFFC0C0C0);
+        graphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, 0xFFD0D0D0);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + 2, 0xFF8A8A8A);
+        graphics.fill(x + 1, y + 1, x + 2, y + height - 1, 0xFF8A8A8A);
+        graphics.fill(x + 1, y + height - 2, x + width - 1, y + height - 1, 0xFFFFFFFF);
+        graphics.fill(x + width - 2, y + 1, x + width - 1, y + height - 1, 0xFFFFFFFF);
+    }
+
+    public static void renderSocialList(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFF000000);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFFE6E6E6);
+        graphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, 0xFF1E1E1E);
+        graphics.fill(x + 3, y + 3, x + width - 3, y + height - 3, 0xFF383838);
+    }
+
+    public static void renderSocialRow(GuiGraphics graphics, int x, int y, int width, int height, boolean active) {
+        graphics.fill(x, y, x + width, y + height, active ? 0xFF4F604F : 0xFF4A4A4A);
+        graphics.fill(x, y + height - 1, x + width, y + height, 0xFF3A3A3A);
+    }
+
+    public static void renderSocialSearch(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFFFFFFFF);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFF000000);
+    }
+
     private static void blit(GuiGraphics graphics, int x, int y, int sourceX, int sourceY, int width, int height) {
         graphics.blit(INVENTORY_TEXTURE, x, y, sourceX, sourceY, width, height);
     }

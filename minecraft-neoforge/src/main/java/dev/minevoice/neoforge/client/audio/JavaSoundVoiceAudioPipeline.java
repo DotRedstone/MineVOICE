@@ -16,6 +16,7 @@ import javax.sound.sampled.TargetDataLine;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -23,6 +24,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public final class JavaSoundVoiceAudioPipeline {
@@ -39,6 +41,8 @@ public final class JavaSoundVoiceAudioPipeline {
     private final Consumer<VoiceFrame> frameSender;
     private final VoiceActivityListener activityListener;
     private final VoiceSpatializer spatializer;
+    private final Function<UUID, Float> playerVolumeSupplier;
+    private final Function<UUID, Boolean> playerMutedSupplier;
     private final VoiceCodec codec;
     private final BlockingQueue<VoiceFrame> playbackQueue = new LinkedBlockingQueue<>(512);
     private final AtomicBoolean running = new AtomicBoolean();
@@ -55,13 +59,17 @@ public final class JavaSoundVoiceAudioPipeline {
             Supplier<ClientAudioSettings> settingsSupplier,
             Consumer<VoiceFrame> frameSender,
             VoiceActivityListener activityListener,
-            VoiceSpatializer spatializer
+            VoiceSpatializer spatializer,
+            Function<UUID, Float> playerVolumeSupplier,
+            Function<UUID, Boolean> playerMutedSupplier
     ) {
         this.playerId = playerId;
         this.settingsSupplier = settingsSupplier;
         this.frameSender = frameSender;
         this.activityListener = activityListener;
         this.spatializer = spatializer;
+        this.playerVolumeSupplier = playerVolumeSupplier;
+        this.playerMutedSupplier = playerMutedSupplier;
         this.codec = VoiceCodecFactory.create(settingsSupplier.get().voiceCodec());
     }
 
@@ -112,8 +120,8 @@ public final class JavaSoundVoiceAudioPipeline {
                 while (running.get() && sameCaptureDevice(settings)) {
                     int read = line.read(pcm, 0, pcm.length);
                     float microphoneLevel = read <= 0 ? 0.0F : peakLevel(pcm, read);
-                    VoiceChannel channel = read > 0 ? transmitChannel(settings, microphoneLevel) : null;
-                    boolean transmitting = channel != null;
+                    List<VoiceChannel> channels = read > 0 ? transmitChannels(settings, microphoneLevel) : List.of();
+                    boolean transmitting = !channels.isEmpty();
                     activityListener.onActivity(microphoneLevel, transmitting);
                     if (!transmitting) {
                         continue;
@@ -121,7 +129,10 @@ public final class JavaSoundVoiceAudioPipeline {
                     byte[] framePcm = Arrays.copyOf(pcm, read);
                     applyVolume(framePcm, settings.microphoneVolume());
                     byte[] encoded = codec.encode(framePcm);
-                    frameSender.accept(new VoiceFrame(playerId, ++sequence, System.currentTimeMillis(), encoded, 48_000, 1, channel));
+                    long timestamp = System.currentTimeMillis();
+                    for (VoiceChannel channel : channels) {
+                        frameSender.accept(new VoiceFrame(playerId, ++sequence, timestamp, encoded, 48_000, 1, channel));
+                    }
                 }
             } catch (RuntimeException exception) {
                 sleepQuietly(1_000L);
@@ -211,17 +222,41 @@ public final class JavaSoundVoiceAudioPipeline {
         return previous.outputDevice().equals(settingsSupplier.get().outputDevice());
     }
 
-    private VoiceChannel transmitChannel(ClientAudioSettings settings, float microphoneLevel) {
+    private List<VoiceChannel> transmitChannels(ClientAudioSettings settings, float microphoneLevel) {
         if (settings.muted()) {
-            return null;
+            return List.of();
         }
-        if (groupPushToTalkDown.get()) {
-            return VoiceChannel.GROUP;
+        boolean proximityActive = shouldTransmit(
+                settings.activationMode(),
+                proximityPushToTalkDown.get(),
+                microphoneLevel,
+                settings.voiceActivationThreshold()
+        );
+        boolean groupActive = shouldTransmit(
+                settings.groupActivationMode(),
+                groupPushToTalkDown.get(),
+                microphoneLevel,
+                settings.groupVoiceActivationThreshold()
+        );
+        if (proximityActive && groupActive) {
+            return List.of(VoiceChannel.PROXIMITY, VoiceChannel.GROUP);
         }
-        if (settings.activationMode() == VoiceActivationMode.PUSH_TO_TALK) {
-            return proximityPushToTalkDown.get() ? VoiceChannel.PROXIMITY : null;
+        if (proximityActive) {
+            return List.of(VoiceChannel.PROXIMITY);
         }
-        return microphoneLevel >= settings.voiceActivationThreshold() ? VoiceChannel.PROXIMITY : null;
+        return groupActive ? List.of(VoiceChannel.GROUP) : List.of();
+    }
+
+    private static boolean shouldTransmit(
+            VoiceActivationMode activationMode,
+            boolean pushToTalkDown,
+            float microphoneLevel,
+            float threshold
+    ) {
+        if (activationMode == VoiceActivationMode.PUSH_TO_TALK) {
+            return pushToTalkDown;
+        }
+        return microphoneLevel >= threshold;
     }
 
     private static float peakLevel(byte[] pcm, int bytes) {
@@ -277,12 +312,16 @@ public final class JavaSoundVoiceAudioPipeline {
             if (frame == null || frame.channels() != 1) {
                 continue;
             }
+            if (Boolean.TRUE.equals(playerMutedSupplier.apply(frame.senderPlayerId()))) {
+                continue;
+            }
 
             StereoGains gains = settings.spatialAudioEnabled()
                     ? spatializer.gainsFor(frame.senderPlayerId(), frame.channel())
                     : StereoGains.CENTER;
-            float leftGain = volume * gains.left();
-            float rightGain = volume * gains.right();
+            float playerVolume = clampPlayerVolume(playerVolumeSupplier.apply(frame.senderPlayerId()));
+            float leftGain = volume * playerVolume * gains.left();
+            float rightGain = volume * playerVolume * gains.right();
             if (leftGain <= 0.0F && rightGain <= 0.0F) {
                 continue;
             }
@@ -310,6 +349,13 @@ public final class JavaSoundVoiceAudioPipeline {
 
     private static float clampVolume(float value) {
         return Math.max(0.0F, Math.min(1.0F, value));
+    }
+
+    private static float clampPlayerVolume(Float value) {
+        if (value == null) {
+            return 1.0F;
+        }
+        return Math.max(0.0F, Math.min(2.0F, value));
     }
 
     private static void writeSample(byte[] target, int offset, int sample) {

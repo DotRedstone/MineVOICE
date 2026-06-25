@@ -10,25 +10,31 @@ import java.util.UUID;
 
 public final class VoiceGroupManager {
     private static final int MAX_GROUP_NAME_LENGTH = 32;
+    private static final int MAX_GROUP_PASSWORD_LENGTH = 64;
 
     private final Map<UUID, MutableVoiceGroup> groups = new LinkedHashMap<>();
     private final Map<UUID, UUID> playerGroups = new LinkedHashMap<>();
 
-    public VoiceGroup create(UUID ownerId, String requestedName) {
+    public VoiceGroup create(UUID ownerId, String requestedName, String requestedPassword) {
         String name = normalizeName(requestedName);
+        String password = normalizePassword(requestedPassword);
         leave(ownerId);
         UUID groupId = UUID.randomUUID();
-        MutableVoiceGroup group = new MutableVoiceGroup(groupId, name, ownerId);
+        MutableVoiceGroup group = new MutableVoiceGroup(groupId, name, ownerId, password);
         group.members.add(ownerId);
         groups.put(groupId, group);
         playerGroups.put(ownerId, groupId);
         return group.snapshot();
     }
 
-    public boolean join(UUID playerId, UUID groupId) {
+    public boolean join(UUID playerId, UUID groupId, String requestedPassword) {
         MutableVoiceGroup group = groups.get(groupId);
         if (group == null) {
             return false;
+        }
+        String password = normalizePassword(requestedPassword);
+        if (!group.password.isEmpty() && !group.password.equals(password)) {
+            throw new IllegalArgumentException("group password is incorrect");
         }
         leave(playerId);
         group.members.add(playerId);
@@ -80,20 +86,30 @@ public final class VoiceGroupManager {
         return normalized;
     }
 
+    private static String normalizePassword(String requestedPassword) {
+        String normalized = requestedPassword == null ? "" : requestedPassword.trim();
+        if (normalized.length() > MAX_GROUP_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("group password is too long");
+        }
+        return normalized;
+    }
+
     private static final class MutableVoiceGroup {
         private final UUID id;
         private final String name;
+        private final String password;
         private UUID ownerId;
         private final Set<UUID> members = new LinkedHashSet<>();
 
-        private MutableVoiceGroup(UUID id, String name, UUID ownerId) {
+        private MutableVoiceGroup(UUID id, String name, UUID ownerId, String password) {
             this.id = id;
             this.name = name;
             this.ownerId = ownerId;
+            this.password = password;
         }
 
         private VoiceGroup snapshot() {
-            return new VoiceGroup(id, name, ownerId, members);
+            return new VoiceGroup(id, name, ownerId, members, !password.isEmpty());
         }
     }
 }

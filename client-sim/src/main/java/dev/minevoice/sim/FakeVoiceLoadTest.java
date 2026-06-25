@@ -17,6 +17,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
@@ -84,7 +85,8 @@ public final class FakeVoiceLoadTest {
                     0.0D,
                     groupId,
                     groupId == null ? "" : "Client Sim Group",
-                    false
+                    false,
+                    Set.of()
             ));
         }
         VoiceServerStateSnapshot snapshot = new VoiceServerStateSnapshot(System.currentTimeMillis(), players);

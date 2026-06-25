@@ -41,6 +41,7 @@ public record VoiceRosterPayload(List<VoiceRosterEntry> entries) implements Cust
                 writeUuid(buffer, entry.groupId());
             }
             buffer.writeUtf(entry.groupName(), 64);
+            buffer.writeBoolean(entry.groupPasswordProtected());
             buffer.writeBoolean(entry.muted());
         }
     }
@@ -56,8 +57,9 @@ public record VoiceRosterPayload(List<VoiceRosterEntry> entries) implements Cust
             String playerName = buffer.readUtf(64);
             UUID groupId = buffer.readBoolean() ? readUuid(buffer) : null;
             String groupName = buffer.readUtf(64);
+            boolean groupPasswordProtected = buffer.readBoolean();
             boolean muted = buffer.readBoolean();
-            entries.add(new VoiceRosterEntry(playerId, playerName, groupId, groupName, muted));
+            entries.add(new VoiceRosterEntry(playerId, playerName, groupId, groupName, groupPasswordProtected, muted));
         }
         return new VoiceRosterPayload(entries);
     }

@@ -2,7 +2,7 @@
 
 MineVOICE 是面向 Minecraft 1.21.1 / NeoForge 的双模式 3D 语音基础设施。它的主路径不是让玩家手动填写语音服务器，而是由 Minecraft 服务端下发 endpoint 和短期 token，玩家进服后自动完成语音连接。
 
-当前公开版本为 [v0.1.0-alpha.2](https://github.com/DotRedstone/MineVOICE/releases/tag/v0.1.0-alpha.2)。当前开发分支继续推进 Local 内置语音服务端、基础 jitter buffer 和 Local/LAN 测试脚本。Alpha 版本仍不建议用于高人数生产服。
+当前公开版本为 [v0.1.0-alpha.3](https://github.com/DotRedstone/MineVOICE/releases/tag/v0.1.0-alpha.3)。当前开发分支继续推进 Local 内置语音服务端、基础 jitter buffer 和 Local/LAN 测试脚本。Alpha 版本仍不建议用于高人数生产服。
 
 ## 部署包
 

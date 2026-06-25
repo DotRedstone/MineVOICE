@@ -76,7 +76,8 @@ public final class VoiceStatePublisher {
                 player.getZ(),
                 group == null ? null : group.id(),
                 group == null ? "" : group.name(),
-                playerVoiceStates.muted(player.getUUID())
+                playerVoiceStates.muted(player.getUUID()),
+                playerVoiceStates.mutedPeers(player.getUUID())
         );
     }
 }

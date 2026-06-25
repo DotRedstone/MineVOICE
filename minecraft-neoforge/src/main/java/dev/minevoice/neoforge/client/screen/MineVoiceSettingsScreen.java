@@ -2,16 +2,17 @@ package dev.minevoice.neoforge.client.screen;
 
 import dev.minevoice.neoforge.client.AudioDevice;
 import dev.minevoice.neoforge.client.ClientAudioDeviceScanner;
+import dev.minevoice.neoforge.client.DebugInfoLevel;
 import dev.minevoice.neoforge.client.MineVoiceClientBootstrap;
 import dev.minevoice.neoforge.client.MineVoiceClientUiController;
 import dev.minevoice.neoforge.client.VoiceActivationMode;
 import dev.minevoice.neoforge.client.audio.JavaSoundAudioDeviceTester;
+import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
 import dev.minevoice.neoforge.client.ui.MineVoiceSettingsScreenModel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -19,8 +20,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public final class MineVoiceSettingsScreen extends Screen {
-    private static final int PANEL_MAX_WIDTH = 248;
-    private static final int PANEL_MAX_HEIGHT = 240;
+    private static final int PANEL_MAX_WIDTH = 292;
+    private static final int PANEL_MAX_HEIGHT = 250;
     private static final int ROW_HEIGHT = 20;
 
     private final Screen parent;
@@ -30,7 +31,6 @@ public final class MineVoiceSettingsScreen extends Screen {
     private final List<AudioDevice> outputDevices = ClientAudioDeviceScanner.outputDevices();
 
     private SettingsTab selectedTab = SettingsTab.AUDIO;
-    private EditBox pushToTalkKey;
     private Button microphoneTestButton;
     private volatile String deviceTestStatusKey;
     private volatile boolean deviceTestRunning;
@@ -46,9 +46,7 @@ public final class MineVoiceSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        syncOpenFields();
         clearWidgets();
-        pushToTalkKey = null;
 
         int panelLeft = panelLeft();
         int panelTop = panelTop();
@@ -74,7 +72,7 @@ public final class MineVoiceSettingsScreen extends Screen {
         switch (selectedTab) {
             case AUDIO -> initAudioTab(contentLeft, rowY, contentWidth);
             case VOICE -> initVoiceTab(contentLeft, rowY, contentWidth);
-            case CONTROLS -> initControlsTab(contentLeft, rowY, contentWidth);
+            case UI -> initUiTab(contentLeft, rowY, contentWidth);
             case DEBUG -> initDebugTab(contentLeft, rowY, contentWidth);
         }
 
@@ -120,38 +118,48 @@ public final class MineVoiceSettingsScreen extends Screen {
     }
 
     private void initVoiceTab(int left, int y, int contentWidth) {
-        addButton(activationModeMessage(), left, y, contentWidth, ROW_HEIGHT, button -> {
+        addButton(publicActivationModeMessage(), left, y, contentWidth, ROW_HEIGHT, button -> {
                     model.setActivationMode(nextActivationMode());
-                    button.setMessage(activationModeMessage());
+                    button.setMessage(publicActivationModeMessage());
                 });
-        addRenderableWidget(new VolumeSlider(left, y + 21, contentWidth, ROW_HEIGHT, "screen.minevoice.voice_activation_threshold", model.voiceActivationThreshold()) {
+        addRenderableWidget(new VolumeSlider(left, y + 21, contentWidth, ROW_HEIGHT, "screen.minevoice.public_voice_activation_threshold", model.voiceActivationThreshold()) {
             @Override
             protected void applyValue() {
                 model.setVoiceActivationThreshold((float) value);
             }
         });
-        addToggle(left, y + 42, contentWidth, "screen.minevoice.spatial_audio", model.spatialAudioEnabled(),
+        addButton(groupActivationModeMessage(), left, y + 42, contentWidth, ROW_HEIGHT, button -> {
+            model.setGroupActivationMode(nextGroupActivationMode());
+            button.setMessage(groupActivationModeMessage());
+        });
+        addRenderableWidget(new VolumeSlider(left, y + 63, contentWidth, ROW_HEIGHT, "screen.minevoice.group_voice_activation_threshold", model.groupVoiceActivationThreshold()) {
+            @Override
+            protected void applyValue() {
+                model.setGroupVoiceActivationThreshold((float) value);
+            }
+        });
+        addToggle(left, y + 84, contentWidth, "screen.minevoice.spatial_audio", model.spatialAudioEnabled(),
                 model::setSpatialAudioEnabled);
-        addToggle(left, y + 63, contentWidth, "screen.minevoice.muted", model.muted(), model::setMuted);
-        addToggle(left, y + 84, contentWidth, "screen.minevoice.deafened", model.deafened(), model::setDeafened);
+        addToggle(left, y + 105, contentWidth, "screen.minevoice.muted", model.muted(), model::setMuted);
+        addToggle(left, y + 126, contentWidth, "screen.minevoice.deafened", model.deafened(), model::setDeafened);
     }
 
-    private void initControlsTab(int left, int y, int contentWidth) {
-        pushToTalkKey = new EditBox(font, left, y + 17, contentWidth, 20, Component.translatable("screen.minevoice.push_to_talk"));
-        pushToTalkKey.setMaxLength(32);
-        pushToTalkKey.setValue(model.pushToTalkKey());
-        addRenderableWidget(pushToTalkKey);
-
-        addButton(Component.translatable("screen.minevoice.set_push_to_talk_default"),
-                left, y + 42, contentWidth, ROW_HEIGHT, button -> {
-                    model.setPushToTalkKey("V");
-                    pushToTalkKey.setValue("V");
-                });
+    private void initUiTab(int left, int y, int contentWidth) {
+        addToggle(left, y, contentWidth, "screen.minevoice.hud_enabled", model.hudEnabled(),
+                model::setHudEnabled);
+        addToggle(left, y + 21, contentWidth, "screen.minevoice.nameplate_icons_enabled", model.nameplateIconsEnabled(),
+                model::setNameplateIconsEnabled);
+        addButton(hudIconSizeMessage(), left, y + 42, contentWidth, ROW_HEIGHT, button -> {
+            model.setHudIconSize(MineVoiceHudStyle.nextIconSize(model.hudIconSize()));
+            button.setMessage(hudIconSizeMessage());
+        });
     }
 
     private void initDebugTab(int left, int y, int contentWidth) {
-        addToggle(left, y, contentWidth, "screen.minevoice.debug_info", model.showDebugConnectionInfo(),
-                model::setShowDebugConnectionInfo);
+        addButton(debugLevelMessage(), left, y, contentWidth, ROW_HEIGHT, button -> {
+            model.setDebugInfoLevel(model.debugInfoLevel().next());
+            button.setMessage(debugLevelMessage());
+        });
         addButton(Component.translatable("screen.minevoice.print_debug_snapshot"),
                 left, y + 24, contentWidth, ROW_HEIGHT, button -> {
                     if (minecraft != null && minecraft.player != null) {
@@ -166,14 +174,10 @@ public final class MineVoiceSettingsScreen extends Screen {
         int panelTop = panelTop();
         int panelWidth = panelWidth();
         int panelHeight = panelHeight();
-        int contentLeft = panelLeft + 6;
         Component title = Component.literal("MineVOICE");
         guiGraphics.drawCenteredString(font, title, panelLeft + panelWidth / 2, panelTop + 7, 0xFF404040);
         if (selectedTab == SettingsTab.AUDIO) {
             renderDeviceTestStatus(guiGraphics, panelLeft, panelTop, panelWidth, panelHeight);
-        }
-        if (selectedTab == SettingsTab.CONTROLS && pushToTalkKey != null) {
-            guiGraphics.drawString(font, Component.translatable("screen.minevoice.push_to_talk"), pushToTalkKey.getX(), pushToTalkKey.getY() - 11, 0xFFA0A0A0);
         }
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
@@ -249,18 +253,18 @@ public final class MineVoiceSettingsScreen extends Screen {
     }
 
     private int panelWidth() {
-        return Math.min(PANEL_MAX_WIDTH, Math.max(220, width - 12));
+        return Math.min(PANEL_MAX_WIDTH, Math.max(250, width - 12));
     }
 
     private int panelHeight() {
-        return Math.min(PANEL_MAX_HEIGHT, Math.max(180, height - 8));
+        return Math.min(PANEL_MAX_HEIGHT, Math.max(190, height - 8));
     }
 
-    private Component activationModeMessage() {
+    private Component publicActivationModeMessage() {
         String key = model.activationMode() == VoiceActivationMode.PUSH_TO_TALK
                 ? "screen.minevoice.activation_push_to_talk"
                 : "screen.minevoice.activation_voice_activity";
-        return Component.translatable("screen.minevoice.activation_mode").append(": ").append(Component.translatable(key));
+        return Component.translatable("screen.minevoice.public_activation_mode").append(": ").append(Component.translatable(key));
     }
 
     private VoiceActivationMode nextActivationMode() {
@@ -269,12 +273,42 @@ public final class MineVoiceSettingsScreen extends Screen {
                 : VoiceActivationMode.PUSH_TO_TALK;
     }
 
+    private Component groupActivationModeMessage() {
+        String key = model.groupActivationMode() == VoiceActivationMode.PUSH_TO_TALK
+                ? "screen.minevoice.activation_push_to_talk"
+                : "screen.minevoice.activation_voice_activity";
+        return Component.translatable("screen.minevoice.group_activation_mode").append(": ").append(Component.translatable(key));
+    }
+
+    private VoiceActivationMode nextGroupActivationMode() {
+        return model.groupActivationMode() == VoiceActivationMode.PUSH_TO_TALK
+                ? VoiceActivationMode.VOICE_ACTIVITY
+                : VoiceActivationMode.PUSH_TO_TALK;
+    }
+
+    private Component hudIconSizeMessage() {
+        return Component.translatable("screen.minevoice.hud_icon_size", model.hudIconSize());
+    }
+
+    private Component debugLevelMessage() {
+        DebugInfoLevel level = model.debugInfoLevel();
+        return Component.translatable("screen.minevoice.debug_level")
+                .append(": ")
+                .append(Component.translatable(level.translationKey()));
+    }
+
     private Component debugSnapshot() {
-        return Component.literal("MineVOICE: mode=" + model.activationMode()
-                + ", mic=" + model.microphoneDevice()
-                + ", out=" + model.outputDevice()
-                + ", muted=" + model.muted()
-                + ", deafened=" + model.deafened());
+        return Component.literal("MineVOICE: "
+                + "mode=" + model.activationMode()
+                + " groupMode=" + model.groupActivationMode()
+                + " mic=" + deviceSummary(model.microphoneDevice())
+                + " out=" + deviceSummary(model.outputDevice())
+                + " hud=" + model.hudEnabled()
+                + " debug=" + model.debugInfoLevel());
+    }
+
+    private static String deviceSummary(String deviceId) {
+        return "default".equalsIgnoreCase(deviceId) ? "default" : "custom";
     }
 
     private void startOutputTest() {
@@ -353,9 +387,7 @@ public final class MineVoiceSettingsScreen extends Screen {
 
     private void saveAndClose() {
         stopDeviceTest();
-        syncOpenFields();
         uiController.saveAndClose(model);
-        MineVoiceClientBootstrap.applyPushToTalkBinding(model.pushToTalkKey());
         MineVoiceClientBootstrap.syncLocalVoiceStatus();
         if (minecraft != null) {
             minecraft.setScreen(parent);
@@ -365,7 +397,6 @@ public final class MineVoiceSettingsScreen extends Screen {
     private void reset() {
         stopDeviceTest();
         model.resetToDefaults();
-        pushToTalkKey = null;
         rebuildWidgets();
     }
 
@@ -376,16 +407,10 @@ public final class MineVoiceSettingsScreen extends Screen {
         }
     }
 
-    private void syncOpenFields() {
-        if (pushToTalkKey != null) {
-            model.setPushToTalkKey(pushToTalkKey.getValue());
-        }
-    }
-
     private enum SettingsTab {
         AUDIO("screen.minevoice.tab.audio"),
         VOICE("screen.minevoice.tab.voice"),
-        CONTROLS("screen.minevoice.tab.controls"),
+        UI("screen.minevoice.tab.ui"),
         DEBUG("screen.minevoice.tab.debug");
 
         private final String titleKey;

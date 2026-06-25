@@ -51,11 +51,19 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
                 floatProperty(properties, "microphoneVolume", defaults.microphoneVolume()),
                 enumProperty(properties, "activationMode", VoiceActivationMode.class, defaults.activationMode()),
                 floatProperty(properties, "voiceActivationThreshold", defaults.voiceActivationThreshold()),
+                enumProperty(properties, "groupActivationMode", VoiceActivationMode.class, defaults.groupActivationMode()),
+                floatProperty(properties, "groupVoiceActivationThreshold", defaults.groupVoiceActivationThreshold()),
                 booleanProperty(properties, "spatialAudioEnabled", defaults.spatialAudioEnabled()),
                 properties.getProperty("voiceCodec", defaults.voiceCodec()),
                 booleanProperty(properties, "muted", defaults.muted()),
                 booleanProperty(properties, "deafened", defaults.deafened()),
-                booleanProperty(properties, "showDebugConnectionInfo", defaults.showDebugConnectionInfo())
+                booleanProperty(properties, "hudEnabled", defaults.hudEnabled()),
+                booleanProperty(properties, "speakerHudEnabled", defaults.speakerHudEnabled()),
+                booleanProperty(properties, "groupHudEnabled", defaults.groupHudEnabled()),
+                booleanProperty(properties, "nameplateIconsEnabled", defaults.nameplateIconsEnabled()),
+                enumProperty(properties, "hudAvatarAnchor", HudAvatarAnchor.class, defaults.hudAvatarAnchor()),
+                intProperty(properties, "hudIconSize", defaults.hudIconSize()),
+                debugInfoLevel(properties, defaults.debugInfoLevel())
         );
     }
 
@@ -71,10 +79,19 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         properties.setProperty("microphoneVolume", Float.toString(settings.microphoneVolume()));
         properties.setProperty("activationMode", settings.activationMode().name());
         properties.setProperty("voiceActivationThreshold", Float.toString(settings.voiceActivationThreshold()));
+        properties.setProperty("groupActivationMode", settings.groupActivationMode().name());
+        properties.setProperty("groupVoiceActivationThreshold", Float.toString(settings.groupVoiceActivationThreshold()));
         properties.setProperty("spatialAudioEnabled", Boolean.toString(settings.spatialAudioEnabled()));
         properties.setProperty("voiceCodec", settings.voiceCodec());
         properties.setProperty("muted", Boolean.toString(settings.muted()));
         properties.setProperty("deafened", Boolean.toString(settings.deafened()));
+        properties.setProperty("hudEnabled", Boolean.toString(settings.hudEnabled()));
+        properties.setProperty("speakerHudEnabled", Boolean.toString(settings.speakerHudEnabled()));
+        properties.setProperty("groupHudEnabled", Boolean.toString(settings.groupHudEnabled()));
+        properties.setProperty("nameplateIconsEnabled", Boolean.toString(settings.nameplateIconsEnabled()));
+        properties.setProperty("hudAvatarAnchor", settings.hudAvatarAnchor().name());
+        properties.setProperty("hudIconSize", Integer.toString(settings.hudIconSize()));
+        properties.setProperty("debugInfoLevel", settings.debugInfoLevel().name());
         properties.setProperty("showDebugConnectionInfo", Boolean.toString(settings.showDebugConnectionInfo()));
 
         try {
@@ -99,11 +116,28 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         return Boolean.parseBoolean(properties.getProperty(key, Boolean.toString(fallback)));
     }
 
+    private static int intProperty(Properties properties, String key, int fallback) {
+        try {
+            return Integer.parseInt(properties.getProperty(key, Integer.toString(fallback)));
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
     private static <T extends Enum<T>> T enumProperty(Properties properties, String key, Class<T> enumType, T fallback) {
         try {
             return Enum.valueOf(enumType, properties.getProperty(key, fallback.name()));
         } catch (IllegalArgumentException exception) {
             return fallback;
         }
+    }
+
+    private static DebugInfoLevel debugInfoLevel(Properties properties, DebugInfoLevel fallback) {
+        if (properties.containsKey("debugInfoLevel")) {
+            return enumProperty(properties, "debugInfoLevel", DebugInfoLevel.class, fallback);
+        }
+        return booleanProperty(properties, "showDebugConnectionInfo", false)
+                ? DebugInfoLevel.BASIC
+                : fallback;
     }
 }

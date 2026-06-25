@@ -14,6 +14,7 @@ import dev.minevoice.neoforge.server.VoiceStatePublisher;
 import dev.minevoice.neoforge.server.VoiceTokenService;
 import dev.minevoice.neoforge.network.VoiceGroupAction;
 import dev.minevoice.neoforge.network.VoiceGroupActionPayload;
+import dev.minevoice.neoforge.network.VoicePeerMutePayload;
 import dev.minevoice.neoforge.network.VoicePlayerStatusPayload;
 import dev.minevoice.neoforge.network.VoiceRosterEntry;
 import dev.minevoice.neoforge.network.VoiceRosterPayload;
@@ -156,12 +157,19 @@ public final class MineVoiceMod {
         }
     }
 
+    public static void handlePeerMute(ServerPlayer player, VoicePeerMutePayload payload) {
+        if (instance != null) {
+            instance.playerVoiceStates.setPeerMuted(player.getUUID(), payload.playerId(), payload.muted());
+            instance.publishVoiceState(player.server);
+        }
+    }
+
     private void applyGroupAction(ServerPlayer player, VoiceGroupActionPayload payload) {
         try {
             switch (payload.action()) {
-                case CREATE -> voiceGroupManager.create(player.getUUID(), payload.groupName());
+                case CREATE -> voiceGroupManager.create(player.getUUID(), payload.groupName(), payload.password());
                 case JOIN -> {
-                    if (payload.groupId() == null || !voiceGroupManager.join(player.getUUID(), payload.groupId())) {
+                    if (payload.groupId() == null || !voiceGroupManager.join(player.getUUID(), payload.groupId(), payload.password())) {
                         player.displayClientMessage(Component.literal("MineVOICE: group is no longer available"), true);
                         return;
                     }
@@ -193,6 +201,7 @@ public final class MineVoiceMod {
                 player.getGameProfile().getName(),
                 group == null ? null : group.id(),
                 group == null ? "" : group.name(),
+                group != null && group.passwordProtected(),
                 playerVoiceStates.muted(player.getUUID())
         );
     }

@@ -51,7 +51,8 @@ public final class VoicePlayerDirectory {
             groups.put(entry.groupId(), new VoiceGroupSummary(
                     entry.groupId(),
                     entry.groupName(),
-                    previous == null ? 1 : previous.memberCount() + 1
+                    previous == null ? 1 : previous.memberCount() + 1,
+                    entry.groupPasswordProtected()
             ));
         }
         return groups.values().stream()
