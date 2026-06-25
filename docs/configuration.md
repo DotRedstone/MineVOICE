@@ -63,9 +63,9 @@ jitterBufferMs=60
 | 配置 | 当前状态 |
 | --- | --- |
 | `voiceCodec` | 默认 `opus`，使用纯 Java Concentus Opus。`mock` / `mock-pcm` 仍可用于调试和 fallback。 |
-| `audioPlaybackBackend` | 当前实际使用 Java Sound；`openal` 是后续 backend 目标。 |
-| `spatialBackend` | 当前为基础 pan 空间化；OpenAL/Sound Physics 仍是 planned。 |
-| `enableOcclusion` / `occlusionStrength` / `occlusionLowPass` | 配置位已保留，真实方块遮挡仍待实现。 |
+| `audioPlaybackBackend` | 当前实际播放路径仍默认 Java Sound；代码已预留 OpenAL backend 抽象和 fallback。 |
+| `spatialBackend` | 当前为 Java Sound pan 空间化；OpenAL per-speaker source 仍是 planned。 |
+| `enableOcclusion` / `occlusionStrength` / `occlusionLowPass` | 客户端已有基础方块视线遮挡、降音量和轻量低通；配置项后续会继续细化为可调开关。 |
 | `jitterBufferMs` | 文档口径为 60ms；当前 Java Sound 播放端使用 3 帧左右的基础 jitter buffer。 |
 
 ## 独立语音服务器配置

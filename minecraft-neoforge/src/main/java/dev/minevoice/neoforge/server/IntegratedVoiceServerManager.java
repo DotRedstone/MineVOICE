@@ -15,6 +15,7 @@ public final class IntegratedVoiceServerManager {
     private final AtomicBoolean running = new AtomicBoolean();
     private StandaloneVoiceServer voiceServer;
     private Thread serverThread;
+    private volatile String lastError = "";
 
     public IntegratedVoiceServerManager(MineVoiceModConfig config) {
         this.config = config;
@@ -25,6 +26,7 @@ public final class IntegratedVoiceServerManager {
         if (!running.compareAndSet(false, true)) {
             return;
         }
+        lastError = "";
         StandaloneConfig standaloneConfig = new StandaloneConfig(
                 config.localVoiceBindHost(),
                 config.localVoiceBindPort(),
@@ -42,6 +44,7 @@ public final class IntegratedVoiceServerManager {
                 voiceServer.start();
             } catch (RuntimeException exception) {
                 if (running.get()) {
+                    lastError = exception.getMessage();
                     logger.warn("MineVOICE local voice server failed: " + exception.getMessage());
                 }
             } finally {
@@ -53,9 +56,7 @@ public final class IntegratedVoiceServerManager {
     }
 
     public void stop() {
-        if (!running.getAndSet(false)) {
-            return;
-        }
+        boolean wasRunning = running.getAndSet(false);
         if (voiceServer != null) {
             voiceServer.stop();
         }
@@ -66,7 +67,11 @@ public final class IntegratedVoiceServerManager {
                 Thread.currentThread().interrupt();
             }
         }
-        logger.info("MineVOICE local voice server stopped");
+        voiceServer = null;
+        serverThread = null;
+        if (wasRunning) {
+            logger.info("MineVOICE local voice server stopped");
+        }
     }
 
     public void replacePlayerStates(Collection<VoicePlayerState> states) {
@@ -77,5 +82,9 @@ public final class IntegratedVoiceServerManager {
 
     public boolean running() {
         return running.get();
+    }
+
+    public String lastError() {
+        return lastError;
     }
 }

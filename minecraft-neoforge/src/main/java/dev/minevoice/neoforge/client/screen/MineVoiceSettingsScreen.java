@@ -6,7 +6,11 @@ import dev.minevoice.neoforge.client.DebugInfoLevel;
 import dev.minevoice.neoforge.client.MineVoiceClientBootstrap;
 import dev.minevoice.neoforge.client.MineVoiceClientUiController;
 import dev.minevoice.neoforge.client.VoiceActivationMode;
+import dev.minevoice.neoforge.client.VoiceNetworkStats;
 import dev.minevoice.neoforge.client.audio.JavaSoundAudioDeviceTester;
+import dev.minevoice.neoforge.client.audio.SoundPhysicsCompat;
+import dev.minevoice.neoforge.client.audio.VoicePlaybackStats;
+import dev.minevoice.neoforge.client.audio.VoiceSpatialDebugSnapshot;
 import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
 import dev.minevoice.neoforge.client.ui.MineVoiceSettingsScreenModel;
 import net.minecraft.client.Minecraft;
@@ -179,6 +183,9 @@ public final class MineVoiceSettingsScreen extends Screen {
         if (selectedTab == SettingsTab.AUDIO) {
             renderDeviceTestStatus(guiGraphics, panelLeft, panelTop, panelWidth, panelHeight);
         }
+        if (selectedTab == SettingsTab.DEBUG) {
+            renderDebugSummary(guiGraphics, panelLeft + 8, panelTop + 104, panelWidth - 16);
+        }
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
@@ -307,6 +314,42 @@ public final class MineVoiceSettingsScreen extends Screen {
                 + " debug=" + model.debugInfoLevel()
                 + " "
                 + MineVoiceClientBootstrap.debugConnectionSummary());
+    }
+
+    private void renderDebugSummary(GuiGraphics graphics, int left, int top, int width) {
+        VoiceNetworkStats networkStats = MineVoiceClientBootstrap.voiceNetworkStats();
+        VoicePlaybackStats playbackStats = MineVoiceClientBootstrap.voicePlaybackStats();
+        VoiceSpatialDebugSnapshot spatialDebug = MineVoiceClientBootstrap.voiceSpatialDebugSnapshot();
+        String[] lines = {
+                "状态: " + networkStats.status() + "  " + networkStats.endpoint(),
+                "协议: " + networkStats.protocolVersion() + "  codec: " + networkStats.codec()
+                        + "  playback: " + playbackStats.backendName(),
+                String.format(java.util.Locale.ROOT, "UDP: %.1f/%.1f KiB  packets: %d/%d",
+                        networkStats.udpSentKiB(),
+                        networkStats.udpReceivedKiB(),
+                        networkStats.udpPacketsSent(),
+                        networkStats.udpPacketsReceived()),
+                String.format(java.util.Locale.ROOT, "Voice: %.1f/%.1f KiB  frames: %d/%d  fps: %.1f/%.1f",
+                        networkStats.voiceSentKiB(),
+                        networkStats.voiceReceivedKiB(),
+                        networkStats.voiceFramesSent(),
+                        networkStats.voiceFramesReceived(),
+                        networkStats.voiceFramesSentPerSecond(),
+                        networkStats.voiceFramesReceivedPerSecond()),
+                "Jitter: speakers " + playbackStats.activeSpeakers()
+                        + " buffered " + playbackStats.bufferedFrames()
+                        + " late " + playbackStats.latePackets()
+                        + " dropped " + playbackStats.droppedPackets()
+                        + " missing " + playbackStats.missingFrames(),
+                "Spatial: " + spatialDebug.summary(),
+                "Compat: " + SoundPhysicsCompat.backendName()
+        };
+        int y = top;
+        for (String line : lines) {
+            String trimmed = font.plainSubstrByWidth(line, width);
+            graphics.drawString(font, trimmed, left, y, 0xFF404040, false);
+            y += 12;
+        }
     }
 
     private static String deviceSummary(String deviceId) {

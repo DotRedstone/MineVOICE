@@ -60,7 +60,7 @@ MineVOICE local voice endpoint advertised as <host>:24454
 
 ## Debug 查看
 
-- 客户端：`showDebugConnectionInfo=true` 会显示连接状态提示；设置页的调试页点击“输出当前设置到聊天栏”会打印 endpoint、protocol、codec、UDP 收发 KiB、packet counts、encoded voice KiB、frames/sec 和基础 jitter stats。
+- 客户端：`showDebugConnectionInfo=true` 会显示连接状态提示；设置页的调试页会直接显示 endpoint、protocol、codec、playback backend、UDP 收发 KiB、packet counts、encoded voice KiB、frames/sec、基础 jitter stats、spatial debug 和 compat 摘要，也可以点击“输出当前设置到聊天栏”复制一份到聊天栏。
 - 服务端：`enableDebugLog=true` 会输出 token、状态同步、UDP 转发等调试日志。
 - codec：默认 `opus`；服务端通过 `voice_server_info` 下发 codec，客户端 debug verbose 会显示当前 codec。
 - jitter：debug 快照会显示 active speakers、buffered frames、late packets、dropped packets 和 missing frames。

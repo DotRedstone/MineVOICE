@@ -4,6 +4,9 @@ import dev.minevoice.common.protocol.VoiceChannel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +17,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * Captures Minecraft entity positions on the client thread for use by the audio thread.
  */
-public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
+public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceSpatialSceneProvider {
     private static final double FULL_VOLUME_DISTANCE = 4.0D;
     private static final double MAX_PROXIMITY_DISTANCE = 48.0D;
     private static final String BACKEND_NAME = "java-sound-pan";
@@ -45,7 +48,12 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
             }
             UUID playerId = player.getUUID();
             visiblePlayers.add(playerId);
-            sources.put(playerId, new SourceSnapshot(player.getX(), player.getEyeY(), player.getZ()));
+            sources.put(playerId, new SourceSnapshot(
+                    player.getX(),
+                    player.getEyeY(),
+                    player.getZ(),
+                    occluded(minecraft, localPlayer, player)
+            ));
         }
         sources.keySet().retainAll(visiblePlayers);
     }
@@ -102,7 +110,11 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
             return StereoGains.CENTER;
         }
 
+        boolean occluded = source.occluded();
         float volume = volumeAt(distance);
+        if (occluded) {
+            volume *= 0.55F;
+        }
         if (volume <= 0.0F) {
             debugSnapshot = new VoiceSpatialDebugSnapshot(
                     speakerId,
@@ -112,7 +124,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
                     0.0F,
                     0.0F,
                     true,
-                    false,
+                    occluded,
                     BACKEND_NAME
             );
             return new StereoGains(0.0F, 0.0F);
@@ -135,10 +147,42 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
                 gains.left(),
                 gains.right(),
                 true,
-                false,
+                occluded,
                 BACKEND_NAME
         );
         return gains;
+    }
+
+    @Override
+    public boolean occluded(UUID speakerId, VoiceChannel channel) {
+        if (channel != VoiceChannel.PROXIMITY) {
+            return false;
+        }
+        SourceSnapshot source = sources.get(speakerId);
+        return source != null && source.occluded();
+    }
+
+    @Override
+    public VoiceListenerSnapshot listenerSnapshot() {
+        ListenerSnapshot currentListener = listener;
+        if (currentListener == null) {
+            return VoiceListenerSnapshot.unavailable();
+        }
+        return new VoiceListenerSnapshot(
+                currentListener.x(),
+                currentListener.y(),
+                currentListener.z(),
+                currentListener.yaw()
+        );
+    }
+
+    @Override
+    public VoiceSourceSnapshot sourceSnapshot(UUID speakerId) {
+        SourceSnapshot source = sources.get(speakerId);
+        if (source == null) {
+            return VoiceSourceSnapshot.unknown(speakerId);
+        }
+        return new VoiceSourceSnapshot(speakerId, source.x(), source.y(), source.z(), true, source.occluded());
     }
 
     public VoiceSpatialDebugSnapshot debugSnapshot() {
@@ -159,9 +203,25 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer {
         return Math.max(min, Math.min(max, value));
     }
 
+    private static boolean occluded(Minecraft minecraft, LocalPlayer listener, Player source) {
+        if (minecraft.level == null) {
+            return false;
+        }
+        Vec3 from = new Vec3(listener.getX(), listener.getEyeY(), listener.getZ());
+        Vec3 to = new Vec3(source.getX(), source.getEyeY(), source.getZ());
+        HitResult result = minecraft.level.clip(new ClipContext(
+                from,
+                to,
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
+                listener
+        ));
+        return result.getType() == HitResult.Type.BLOCK && result.getLocation().distanceToSqr(from) < to.distanceToSqr(from) - 0.25D;
+    }
+
     private record ListenerSnapshot(double x, double y, double z, float yaw) {
     }
 
-    private record SourceSnapshot(double x, double y, double z) {
+    private record SourceSnapshot(double x, double y, double z, boolean occluded) {
     }
 }

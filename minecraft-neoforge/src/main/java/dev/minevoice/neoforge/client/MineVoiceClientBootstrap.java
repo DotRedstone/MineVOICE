@@ -154,7 +154,7 @@ public final class MineVoiceClientBootstrap {
         VoiceSpatialDebugSnapshot spatialDebug = voiceSpatialDebugSnapshot();
         return String.format(
                 Locale.ROOT,
-                "status=%s endpoint=%s proto=%d codec=%s up=%ds udp=%.1f/%.1fKiB pkts=%d/%d voice=%.1f/%.1fKiB frames=%d/%d fps=%.1f/%.1f jitter=speakers:%d buffered:%d late:%d dropped:%d missing:%d spatial={%s}",
+                "status=%s endpoint=%s proto=%d codec=%s up=%ds udp=%.1f/%.1fKiB pkts=%d/%d voice=%.1f/%.1fKiB frames=%d/%d fps=%.1f/%.1f playback=%s jitter=speakers:%d buffered:%d late:%d dropped:%d missing:%d spatial={%s}",
                 stats.status(),
                 stats.endpoint(),
                 stats.protocolVersion(),
@@ -170,6 +170,7 @@ public final class MineVoiceClientBootstrap {
                 stats.voiceFramesReceived(),
                 stats.voiceFramesSentPerSecond(),
                 stats.voiceFramesReceivedPerSecond(),
+                playbackStats.backendName(),
                 playbackStats.activeSpeakers(),
                 playbackStats.bufferedFrames(),
                 playbackStats.latePackets(),

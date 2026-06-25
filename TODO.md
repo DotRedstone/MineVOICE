@@ -19,7 +19,7 @@
 - [x] **Local 状态同步**：Local 模式不再向自己发 UDP `SERVER_STATE`，而是同 JVM 更新 session registry。
 - [x] **advertiseHost 自动处理**：`auto` 避免下发 `0.0.0.0`，本机连接使用 loopback，LAN 优先选择 site-local 地址。多网卡仍建议手动配置。
 - [x] **Local/Remote/LAN demo 脚本**：已有 `start-local-demo.ps1`、`start-remote-demo.ps1`、`start-lan-demo.ps1`。
-- [ ] **Local 生命周期加固**：覆盖 reload、停服、端口占用、重复启动、异常关闭后的 socket/thread 释放。
+- [x] **Local 生命周期加固**：reload 会重启 Local UDP server，stop 会释放旧 server/thread，重复启动会被保护，端口占用或异常关闭会记录到 `/minevoice status` 的 `localError`；仍需真实服停启回归。
 - [x] **LAN host 选择诊断**：当 `auto` 无法可靠选择地址时，在日志和 `/minevoice test-endpoint` 提示手动配置 `localVoiceAdvertiseHost`。
 - [x] **Remote 错误分流日志**：鉴权失败会区分 token 过期 / 签名错误 / 身份不一致 / token 解析失败；endpoint 配置可用 `/minevoice test-endpoint` 排查。
 
@@ -40,12 +40,12 @@
 - [x] **基础 pan 修正**：左右声道 pan 使用水平距离归一化，音量仍按 3D 距离衰减。
 - [x] **空间 debug**：暴露 speaker、distance、pan、gain、channel、occlusion、backend；sameDimension 当前由服务端路由保证。
 - [ ] **空间方向手测**：B 在 A 左/右/前/后和绕圈移动时，确认 pan 不反、变化平滑。
-- [ ] **OpenAL backend 抽象**：补 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend`、listener/source provider。
+- [x] **OpenAL backend 抽象**：已补 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend`、listener/source provider；当前默认仍使用 Java Sound。
 - [ ] **OpenAL per-speaker source**：每个说话者独立 source，source 跟随玩家位置，listener 跟随相机位置和朝向。
 - [ ] **OpenAL 资源释放**：玩家离开、断开、停止说话、关闭世界时释放 source，OpenAL 初始化失败回退 Java Sound。
-- [ ] **基础遮挡和低通**：基于 listener/speaker 之间的方块采样计算 muffled gain / low-pass。
-- [ ] **遮挡性能保护**：采样频率、缓存、最大距离和最大方块数量要可控，不能造成客户端卡顿。
-- [ ] **Sound Physics optional compat skeleton**：只检测安装和预留 backend，不引入硬依赖，不调用不稳定内部 API。
+- [x] **基础遮挡和低通**：客户端按 listener/speaker 视线采样碰撞方块，被遮挡时降低音量并对 PCM 做轻量低通。
+- [x] **遮挡性能保护**：遮挡采样只在客户端 tick 的玩家位置刷新中进行，播放线程复用快照结果，不在音频线程扫方块。
+- [x] **Sound Physics optional compat skeleton**：只检测安装和预留 backend，不引入硬依赖，不调用不稳定内部 API。
 
 ## P4: UI / HUD
 
@@ -61,9 +61,9 @@
 ## P5: 诊断和腐竹工具
 
 - [x] **管理命令**：实现 `/minevoice status`、`/minevoice debug`、`/minevoice reload`、`/minevoice test-endpoint`。
-- [ ] **客户端诊断页**：显示 mode、endpoint、连接状态、codec、playback backend、packet loss、jitter stats、UDP 速率；当前 debug 快照已有基础网络统计和基础 jitter 统计。
-- [ ] **服务端诊断日志**：针对 `127.0.0.1`、Docker 容器名、UDP 端口未放行、sharedSecret 不一致给出明确提示。
-- [ ] **debug 等级整理**：默认不刷屏；basic 显示关键状态，verbose 才显示 mixer id、packet、spatial 细节。
+- [x] **客户端诊断页**：设置页 Debug tab 显示 endpoint、连接状态、codec、playback backend、jitter stats、UDP 速率、voice frames 和 spatial/compat 摘要。
+- [x] **服务端诊断日志**：针对 loopback host、模板 host、默认 sharedSecret、Local bind/advertise 端口不一致和 Local UDP 异常给出明确提示。
+- [x] **debug 等级整理**：默认 OFF 不刷屏；BASIC 只显示连接关键状态，VERBOSE 继续显示 codec、activation、spatial 等细节。
 - [x] **client-sim 压测扩展**：支持 proximity / group、不同距离、codec 参数、带宽统计、丢包和乱序模拟；长时间压测和报告输出后续继续增强。
 
 ## P6: 文档和发布
@@ -83,9 +83,7 @@
 - `test(client): 补充双客户端回归验证记录`
 - `feat(audio): 接入 Opus 编解码链路`
 - `feat(audio): 完善语音抖动缓冲统计`
-- `fix(spatial): 补充空间语音调试信息`
 - `feat(audio): 添加 OpenAL 位置音源后端`
-- `feat(spatial): 添加基础遮挡与低通接口`
 - `feat(client): 渲染名牌旁语音状态图标`
 - `feat(client): 细化队伍 HUD 状态反馈`
 - `feat(server): 添加 MineVOICE 诊断命令`

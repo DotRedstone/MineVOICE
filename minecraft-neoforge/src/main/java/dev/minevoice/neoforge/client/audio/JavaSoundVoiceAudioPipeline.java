@@ -18,7 +18,6 @@ import dev.minevoice.neoforge.client.VoiceActivationMode;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.DataLine;
-import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -64,7 +63,7 @@ public final class JavaSoundVoiceAudioPipeline {
     private Thread captureThread;
     private Thread playbackThread;
     private volatile TargetDataLine activeCaptureLine;
-    private volatile SourceDataLine activePlaybackLine;
+    private volatile VoicePlaybackBackend activePlaybackBackend;
     private long sequence;
 
     public JavaSoundVoiceAudioPipeline(
@@ -107,7 +106,7 @@ public final class JavaSoundVoiceAudioPipeline {
             playbackThread.interrupt();
         }
         closeLine(activeCaptureLine);
-        closeLine(activePlaybackLine);
+        closePlaybackBackend(activePlaybackBackend);
         playbackQueue.clear();
         playbackStats.set(VoicePlaybackStats.empty());
     }
@@ -170,13 +169,13 @@ public final class JavaSoundVoiceAudioPipeline {
         Map<UUID, SourcePlaybackState> sourceFrames = new HashMap<>();
         while (running.get()) {
             ClientAudioSettings settings = settingsSupplier.get();
-            try (SourceDataLine line = openSourceLine(settings)) {
-                activePlaybackLine = line;
-                line.start();
+            try (VoicePlaybackBackend backend = VoicePlaybackBackendFactory.open(settings, PLAYBACK_FORMAT, PLAYBACK_FRAME_BYTES * 8)) {
+                activePlaybackBackend = backend;
+                backend.start();
                 long nextMixAt = System.nanoTime();
-                while (running.get() && samePlaybackDevice(settings)) {
+                while (running.get() && backend.matches(settingsSupplier.get())) {
                     drainPlaybackQueue(sourceFrames);
-                    updatePlaybackStats(sourceFrames);
+                    updatePlaybackStats(sourceFrames, backend.backendName());
                     ClientAudioSettings current = settingsSupplier.get();
                     if (current.deafened()) {
                         sourceFrames.clear();
@@ -201,9 +200,9 @@ public final class JavaSoundVoiceAudioPipeline {
                     }
                     byte[] stereoPcm = mixStereoFrame(sourceFrames, current);
                     if (stereoPcm != null) {
-                        line.write(stereoPcm, 0, stereoPcm.length);
+                        backend.writeStereoFrame(stereoPcm, 0, stereoPcm.length);
                     }
-                    updatePlaybackStats(sourceFrames);
+                    updatePlaybackStats(sourceFrames, backend.backendName());
                     nextMixAt += FRAME_DURATION_NANOS;
                     if (nextMixAt < now - FRAME_DURATION_NANOS) {
                         nextMixAt = now;
@@ -214,7 +213,7 @@ public final class JavaSoundVoiceAudioPipeline {
             } catch (RuntimeException exception) {
                 sleepQuietly(1_000L);
             } finally {
-                activePlaybackLine = null;
+                activePlaybackBackend = null;
             }
         }
     }
@@ -230,23 +229,8 @@ public final class JavaSoundVoiceAudioPipeline {
         return line;
     }
 
-    private SourceDataLine openSourceLine(ClientAudioSettings settings) {
-        DataLine.Info info = new DataLine.Info(SourceDataLine.class, PLAYBACK_FORMAT);
-        SourceDataLine line = (SourceDataLine) JavaSoundDeviceSelector.getLine(settings.outputDevice(), info);
-        try {
-            line.open(PLAYBACK_FORMAT, PLAYBACK_FRAME_BYTES * 8);
-        } catch (Exception exception) {
-            throw new IllegalStateException("failed to open output line", exception);
-        }
-        return line;
-    }
-
     private boolean sameCaptureDevice(ClientAudioSettings previous) {
         return previous.microphoneDevice().equals(settingsSupplier.get().microphoneDevice());
-    }
-
-    private boolean samePlaybackDevice(ClientAudioSettings previous) {
-        return previous.outputDevice().equals(settingsSupplier.get().outputDevice());
     }
 
     private List<VoiceChannel> transmitChannels(ClientAudioSettings settings, float microphoneLevel) {
@@ -316,6 +300,12 @@ public final class JavaSoundVoiceAudioPipeline {
         }
     }
 
+    private static void closePlaybackBackend(VoicePlaybackBackend backend) {
+        if (backend != null) {
+            backend.close();
+        }
+    }
+
     private void drainPlaybackQueue(Map<UUID, SourcePlaybackState> sourceFrames) {
         VoiceFrame frame;
         while ((frame = playbackQueue.poll()) != null) {
@@ -326,12 +316,13 @@ public final class JavaSoundVoiceAudioPipeline {
     private void enqueueSourceFrame(Map<UUID, SourcePlaybackState> sourceFrames, VoiceFrame frame) {
         SourcePlaybackState source = sourceFrames.computeIfAbsent(frame.senderPlayerId(), ignored -> new SourcePlaybackState(
                 new JitterBuffer(JITTER_BUFFER_CONFIG),
-                codec.createDecoder()
+                codec.createDecoder(),
+                new LowPassState()
         ));
         source.jitterBuffer().offer(frame);
     }
 
-    private void updatePlaybackStats(Map<UUID, SourcePlaybackState> sourceFrames) {
+    private void updatePlaybackStats(Map<UUID, SourcePlaybackState> sourceFrames, String backendName) {
         int bufferedFrames = 0;
         long latePackets = 0L;
         long droppedPackets = 0L;
@@ -344,6 +335,7 @@ public final class JavaSoundVoiceAudioPipeline {
             missingFrames += stats.missingFrames();
         }
         playbackStats.set(new VoicePlaybackStats(
+                backendName,
                 sourceFrames.size(),
                 bufferedFrames,
                 latePackets,
@@ -382,6 +374,11 @@ public final class JavaSoundVoiceAudioPipeline {
                 continue;
             }
             byte[] pcm = source.decoder().decode(frame.encodedAudio());
+            if (spatializer.occluded(frame.senderPlayerId(), frame.channel())) {
+                applyLowPass(pcm, source.lowPassState());
+            } else {
+                source.lowPassState().reset();
+            }
             int sampleCount = Math.min(SAMPLES_PER_FRAME, pcm.length / Short.BYTES);
             for (int index = 0; index < sampleCount; index++) {
                 int offset = index * Short.BYTES;
@@ -420,6 +417,19 @@ public final class JavaSoundVoiceAudioPipeline {
         target[offset + 1] = (byte) ((clamped >>> 8) & 0xFF);
     }
 
+    private static void applyLowPass(byte[] pcm, LowPassState state) {
+        float previous = state.previousSample();
+        for (int index = 0; index + 1 < pcm.length; index += 2) {
+            int sample = (pcm[index + 1] << 8) | (pcm[index] & 0xFF);
+            float filtered = previous + 0.22F * (sample - previous);
+            int clamped = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, Math.round(filtered)));
+            pcm[index] = (byte) (clamped & 0xFF);
+            pcm[index + 1] = (byte) ((clamped >>> 8) & 0xFF);
+            previous = filtered;
+        }
+        state.setPreviousSample(previous);
+    }
+
     private static void sleepQuietly(long millis) {
         try {
             Thread.sleep(millis);
@@ -428,6 +438,22 @@ public final class JavaSoundVoiceAudioPipeline {
         }
     }
 
-    private record SourcePlaybackState(JitterBuffer jitterBuffer, VoiceDecoder decoder) {
+    private record SourcePlaybackState(JitterBuffer jitterBuffer, VoiceDecoder decoder, LowPassState lowPassState) {
+    }
+
+    private static final class LowPassState {
+        private float previousSample;
+
+        float previousSample() {
+            return previousSample;
+        }
+
+        void setPreviousSample(float previousSample) {
+            this.previousSample = previousSample;
+        }
+
+        void reset() {
+            previousSample = 0.0F;
+        }
     }
 }

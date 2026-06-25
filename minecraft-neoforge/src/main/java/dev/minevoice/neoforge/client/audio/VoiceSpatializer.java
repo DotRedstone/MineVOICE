@@ -10,4 +10,8 @@ import java.util.UUID;
 @FunctionalInterface
 public interface VoiceSpatializer {
     StereoGains gainsFor(UUID speakerId, VoiceChannel channel);
+
+    default boolean occluded(UUID speakerId, VoiceChannel channel) {
+        return false;
+    }
 }

@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 @Mod(MineVoiceMod.MOD_ID)
@@ -257,6 +258,9 @@ public final class MineVoiceMod {
                 ? config.remoteVoiceHost() + ":" + config.remoteVoicePort()
                 : config.localVoiceAdvertiseHost() + ":" + config.localVoiceAdvertisePort();
         LOGGER.info("MineVOICE server config loaded: mode={}, endpoint={}", config.mode(), endpoint);
+        for (String warning : configWarnings()) {
+            LOGGER.warn("MineVOICE config warning: {}", warning);
+        }
     }
 
     private void sendVoiceServerInfo(ServerPlayer player) {
@@ -287,12 +291,14 @@ public final class MineVoiceMod {
 
     private void sendDebug(CommandSourceStack source) {
         boolean secretConfigured = !"change-me".equals(config.sharedSecret());
+        String warnings = configWarnings().isEmpty() ? "none" : String.join(" | ", configWarnings());
         source.sendSuccess(() -> Component.literal("MineVOICE debug: " + statusSummary()
                 + " secretConfigured=" + secretConfigured
                 + " enableDebugLog=" + config.enableDebugLog()
                 + " occlusion=" + config.enableOcclusion()
                 + " soundPhysicsCompat=" + config.enableSoundPhysicsCompat()
-                + " jitterBufferMs=" + config.jitterBufferMs()), false);
+                + " jitterBufferMs=" + config.jitterBufferMs()
+                + " warnings=" + warnings), false);
     }
 
     private void reloadFromCommand(CommandSourceStack source) {
@@ -327,10 +333,16 @@ public final class MineVoiceMod {
                 + " codec=" + config.voiceCodec()
                 + " protocol=" + VoiceProtocolVersion.CURRENT
                 + " localRunning=" + integratedVoiceServerManager.running()
+                + " localError=" + localServerError()
                 + " players=" + playerVoiceStates.connectedCount()
                 + " muted=" + playerVoiceStates.mutedCount()
                 + " groups=" + voiceGroupManager.groups().size()
                 + " proximityDistance=" + config.proximityDistance();
+    }
+
+    private String localServerError() {
+        String lastError = integratedVoiceServerManager.lastError();
+        return lastError == null || lastError.isBlank() ? "none" : lastError;
     }
 
     private String endpointDescription() {
@@ -364,5 +376,33 @@ public final class MineVoiceMod {
             return " note=auto advertise host is resolved per player";
         }
         return "";
+    }
+
+    private List<String> configWarnings() {
+        List<String> warnings = new ArrayList<>();
+        if ("change-me".equals(config.sharedSecret())) {
+            warnings.add("sharedSecret is still the default value");
+        }
+        if (config.mode() == VoiceMode.REMOTE) {
+            String host = config.remoteVoiceHost();
+            if (host.isBlank()) {
+                warnings.add("remoteVoiceHost is blank");
+            }
+            if ("127.0.0.1".equals(host) || "localhost".equalsIgnoreCase(host)) {
+                warnings.add("remoteVoiceHost is loopback; remote clients usually cannot reach it");
+            }
+            if (host.contains("example.com")) {
+                warnings.add("remoteVoiceHost still looks like the template value");
+            }
+        }
+        if (config.mode() == VoiceMode.LOCAL) {
+            if ("127.0.0.1".equals(config.localVoiceBindHost()) && "auto".equalsIgnoreCase(config.localVoiceAdvertiseHost())) {
+                warnings.add("localVoiceBindHost is loopback while advertiseHost is auto; LAN clients may fail");
+            }
+            if (config.localVoiceAdvertisePort() != config.localVoiceBindPort()) {
+                warnings.add("localVoiceAdvertisePort differs from localVoiceBindPort; make sure NAT or firewall mapping exists");
+            }
+        }
+        return warnings;
     }
 }

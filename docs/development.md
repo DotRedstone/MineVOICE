@@ -70,10 +70,12 @@ clients host port sharedSecret framesPerClient playerSpacing channel codec packe
 
 麦克风采集后、codec 编码前会调用 `AudioCaptureProcessor`。当前默认是 `NoopAudioCaptureProcessor`，不改变 PCM；后续降噪、AEC 或自动增益可以在独立算法模块中实现该接口。实现必须足够快，不能阻塞音频采集线程。
 
-## OpenAL 策略
+## OpenAL 和空间策略
 
-Minecraft 本身使用 OpenAL。后续接入时必须避免破坏 MC 声音上下文。当前生产路径保留 Java Sound fallback，OpenAL 先按 backend 抽象和 per-speaker source 生命周期实现，不应一次性替换全部播放链路。
+Minecraft 本身使用 OpenAL。后续接入时必须避免破坏 MC 声音上下文。当前生产路径保留 Java Sound fallback，代码已拆出 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend` 和 listener/source provider。OpenAL class 探测使用反射，不额外引入 native 依赖；真正的 per-speaker source 生命周期仍是下一步。
+
+当前 Java Sound 空间路径已包含基础 pan、距离衰减、遮挡降音量和轻量低通。遮挡采样发生在客户端 tick 的玩家位置刷新中，播放线程只读取快照，避免在音频线程扫方块。Sound Physics Remastered 只做安装探测和 fallback 标记，不调用第三方内部 API。
 
 ## 测试说明
 
-`common:test` 在 Windows Unicode 工作目录下按现有配置跳过，CI Linux 会运行。新增协议、codec、jitter、空间纯 Java 逻辑时应优先放在 `common/src/test`。
+`common:test` 在 Windows Unicode 工作目录下会把测试 classpath 同步到临时 ASCII 路径后执行，CI Linux 也会运行。新增协议、codec、jitter、空间纯 Java 逻辑时应优先放在 `common/src/test`。
