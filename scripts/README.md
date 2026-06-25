@@ -30,6 +30,14 @@
 
 客户端 A 开单人世界并点击 Open to LAN。客户端 B 从多人游戏里的 LAN 世界加入。多网卡或虚拟组网环境下，把 A 的 `config/minevoice-server.properties` 里的 `localVoiceAdvertiseHost` 改成对应网卡 IP。
 
+## Codec 带宽对比
+
+```powershell
+.\scripts\compare-codec-bandwidth.ps1 -Clients 5 -FramesPerClient 120 -OutputPath "$env:TEMP\minevoice-bandwidth.txt"
+```
+
+脚本会临时启动 standalone 语音服务器，分别跑 `client-sim` 的 `opus` 和 `mock-pcm`，输出 UDP 字节数、encoded voice payload 字节数和帧统计。`-OutputPath` 会额外写一份报告文件，方便贴进 release 验收记录。
+
 ## 停止
 
 先关闭 Minecraft 窗口，再运行：

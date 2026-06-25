@@ -5,6 +5,7 @@ import dev.minevoice.common.protocol.VoiceChannel;
 public final class VoiceHudState {
     private volatile VoiceConnectionStatus connectionStatus = VoiceConnectionStatus.DISCONNECTED;
     private volatile boolean pushToTalkDown;
+    private volatile boolean groupPushToTalkDown;
     private volatile boolean transmitting;
     private volatile float microphoneLevel;
     private volatile VoiceChannel activeChannel = VoiceChannel.PROXIMITY;
@@ -15,6 +16,10 @@ public final class VoiceHudState {
 
     public boolean pushToTalkDown() {
         return pushToTalkDown;
+    }
+
+    public boolean groupPushToTalkDown() {
+        return groupPushToTalkDown;
     }
 
     public boolean transmitting() {
@@ -35,6 +40,18 @@ public final class VoiceHudState {
 
     public void setPushToTalkDown(boolean pushToTalkDown) {
         this.pushToTalkDown = pushToTalkDown;
+        if (pushToTalkDown) {
+            activeChannel = VoiceChannel.PROXIMITY;
+        }
+    }
+
+    public void setGroupPushToTalkDown(boolean groupPushToTalkDown) {
+        this.groupPushToTalkDown = groupPushToTalkDown;
+        if (groupPushToTalkDown) {
+            activeChannel = VoiceChannel.GROUP;
+        } else if (!pushToTalkDown) {
+            activeChannel = VoiceChannel.PROXIMITY;
+        }
     }
 
     public void setMicrophoneActivity(float microphoneLevel, boolean transmitting) {

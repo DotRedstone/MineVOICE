@@ -153,9 +153,17 @@ public final class MineVoiceSettingsScreen extends Screen {
                 model::setHudEnabled);
         addToggle(left, y + 21, contentWidth, "screen.minevoice.nameplate_icons_enabled", model.nameplateIconsEnabled(),
                 model::setNameplateIconsEnabled);
-        addButton(hudIconSizeMessage(), left, y + 42, contentWidth, ROW_HEIGHT, button -> {
+        addToggle(left, y + 42, contentWidth, "screen.minevoice.speaker_hud_enabled", model.speakerHudEnabled(),
+                model::setSpeakerHudEnabled);
+        addToggle(left, y + 63, contentWidth, "screen.minevoice.group_hud_enabled", model.groupHudEnabled(),
+                model::setGroupHudEnabled);
+        addButton(hudIconSizeMessage(), left, y + 84, contentWidth, ROW_HEIGHT, button -> {
             model.setHudIconSize(MineVoiceHudStyle.nextIconSize(model.hudIconSize()));
             button.setMessage(hudIconSizeMessage());
+        });
+        addButton(hudAvatarAnchorMessage(), left, y + 105, contentWidth, ROW_HEIGHT, button -> {
+            model.setHudAvatarAnchor(model.hudAvatarAnchor().next());
+            button.setMessage(hudAvatarAnchorMessage());
         });
     }
 
@@ -295,6 +303,12 @@ public final class MineVoiceSettingsScreen extends Screen {
 
     private Component hudIconSizeMessage() {
         return Component.translatable("screen.minevoice.hud_icon_size", model.hudIconSize());
+    }
+
+    private Component hudAvatarAnchorMessage() {
+        return Component.translatable("screen.minevoice.hud_avatar_anchor")
+                .append(": ")
+                .append(Component.translatable(model.hudAvatarAnchor().translationKey()));
     }
 
     private Component debugLevelMessage() {

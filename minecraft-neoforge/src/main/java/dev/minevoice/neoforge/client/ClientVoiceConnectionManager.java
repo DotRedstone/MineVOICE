@@ -157,11 +157,7 @@ public final class ClientVoiceConnectionManager {
     }
 
     public void setGroupPushToTalkDown(boolean pressed) {
-        if (pressed) {
-            hudState.setActiveChannel(dev.minevoice.common.protocol.VoiceChannel.GROUP);
-        } else if (!hudState.pushToTalkDown()) {
-            hudState.setActiveChannel(dev.minevoice.common.protocol.VoiceChannel.PROXIMITY);
-        }
+        hudState.setGroupPushToTalkDown(pressed);
         JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
         if (pipeline != null) {
             pipeline.setGroupPushToTalkDown(pressed);

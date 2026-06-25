@@ -66,6 +66,14 @@ clients host port sharedSecret framesPerClient playerSpacing channel codec packe
 
 `packetLossRate` 可传 `0.1` 或 `10` 表示 10% 模拟丢帧；`reorderWindow=3` 表示每 3 帧内做一次乱序发送，用于压 jitter buffer。
 
+可用脚本快速比较 Opus 和 mock-pcm 的流量：
+
+```powershell
+.\scripts\compare-codec-bandwidth.ps1 -Clients 5 -FramesPerClient 120 -OutputPath "$env:TEMP\minevoice-bandwidth.txt"
+```
+
+该脚本会自动启动临时 standalone 语音服务器并跑两轮 client-sim。它只能验证 encoded payload 和 UDP 包体积差异，真实听感和 CPU 仍要用双客户端回归记录。
+
 ## 音频 DSP 接口
 
 麦克风采集后、codec 编码前会调用 `AudioCaptureProcessor`。当前默认是 `NoopAudioCaptureProcessor`，不改变 PCM；后续降噪、AEC 或自动增益可以在独立算法模块中实现该接口。实现必须足够快，不能阻塞音频采集线程。

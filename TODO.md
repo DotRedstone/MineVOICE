@@ -31,7 +31,8 @@
 - [x] **Encoded frame 格式确认**：`VOICE_FRAME` 明确承载 encoded audio frame，服务端只转发、不解码、不混音。
 - [x] **Opus fallback**：Opus 初始化失败时回退 `mock-pcm-fallback` / Java Sound 可测试路径。
 - [x] **基础带宽统计**：debug 快照显示 codec、UDP send/receive bytes、packet counts、encoded voice bytes 和 frames/sec。
-- [ ] **带宽对比回归**：用双客户端实测记录 Opus 与裸 PCM/mock 的流量差异、听感和 CPU 占用。
+- [x] **带宽对比回归（自动部分）**：`scripts/compare-codec-bandwidth.ps1` 会自动启动 standalone，分别跑 Opus 和 mock-pcm client-sim，输出 UDP/encoded payload 对比。
+- [ ] **真实 Opus 听感 / CPU 回归**：用双客户端实测记录 Opus 与裸 PCM/mock 的听感差异和 CPU 占用。
 - [x] **语音激活优化**：补 hysteresis、噪声门、触发阈值说明，并区分公共频道和队伍频道的触发配置。
 - [x] **降噪 / 回声消除接口**：先做可替换 DSP 接口，不阻塞游戏线程；真实算法后续接入。
 
@@ -53,9 +54,9 @@
 - [x] **频道界面重做**：公共/队伍 tab、玩家头像、玩家音量、玩家静音、队伍密码、搜索和滚动列表已具备基础路径。
 - [x] **HUD 简化路径**：左下角保持麦克风 / 扬声器 / 闭麦 / 关闭听筒状态提示。
 - [x] **名牌旁图标渲染**：把当前 name tag 文字符号改为真正的小图标布局，固定顺序 speaking / muted / deafened / group。
-- [ ] **队伍 HUD 细化**：显示成员连接、静音、说话、按住 `G` 的反馈；HUD 不要遮挡核心画面。
+- [x] **队伍 HUD 细化**：可选队伍 HUD 显示成员头像、说话状态、静音角标，左下 HUD 会在按住 `G` 时给出队伍通话反馈；默认关闭，避免遮挡核心画面。
 - [ ] **频道页视觉复查**：继续按原版社交界面和原版容器质感微调边框、内嵌列表、搜索框、滚动条和按钮间距。
-- [ ] **UI 开关补齐**：显示/隐藏 HUD、图标大小、头像位置、调试信息等级、空间 debug 显示开关。
+- [x] **UI 开关补齐**：设置页已暴露显示/隐藏 HUD、说话头像 HUD、队伍 HUD、名牌图标、图标大小、头像位置和调试信息等级；空间 debug 进入 Debug tab 摘要。
 - [ ] **设备切换回归**：耳机插拔、默认麦克风切换、默认扬声器切换、设备释放和恢复需要真实 Windows 手测。
 
 ## P5: 诊断和腐竹工具

@@ -224,12 +224,36 @@ public final class MineVoiceSettingsScreenModel {
         this.hudEnabled = hudEnabled;
     }
 
+    public boolean speakerHudEnabled() {
+        return speakerHudEnabled;
+    }
+
+    public void setSpeakerHudEnabled(boolean speakerHudEnabled) {
+        this.speakerHudEnabled = speakerHudEnabled;
+    }
+
+    public boolean groupHudEnabled() {
+        return groupHudEnabled;
+    }
+
+    public void setGroupHudEnabled(boolean groupHudEnabled) {
+        this.groupHudEnabled = groupHudEnabled;
+    }
+
     public boolean nameplateIconsEnabled() {
         return nameplateIconsEnabled;
     }
 
     public void setNameplateIconsEnabled(boolean nameplateIconsEnabled) {
         this.nameplateIconsEnabled = nameplateIconsEnabled;
+    }
+
+    public HudAvatarAnchor hudAvatarAnchor() {
+        return hudAvatarAnchor;
+    }
+
+    public void setHudAvatarAnchor(HudAvatarAnchor hudAvatarAnchor) {
+        this.hudAvatarAnchor = hudAvatarAnchor;
     }
 
     public int hudIconSize() {
