@@ -1,4 +1,4 @@
-package dev.minevoice.standalone.udp;
+package dev.minevoice.server.udp;
 
 import dev.minevoice.common.auth.AuthToken;
 import dev.minevoice.common.auth.AuthTokenCodec;
@@ -19,8 +19,8 @@ import dev.minevoice.common.session.VoicePlayerInfo;
 import dev.minevoice.common.session.VoiceSession;
 import dev.minevoice.common.session.VoiceSessionState;
 import dev.minevoice.common.util.MineVoiceLogger;
-import dev.minevoice.standalone.relay.VoiceRelayService;
-import dev.minevoice.standalone.session.VoiceSessionRegistry;
+import dev.minevoice.server.relay.VoiceRelayService;
+import dev.minevoice.server.session.VoiceSessionRegistry;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;

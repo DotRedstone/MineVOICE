@@ -19,5 +19,6 @@ rootProject.name = "minevoice"
 
 include("common")
 include("minecraft-neoforge")
+include("voice-server-core")
 include("standalone-server")
 include("client-sim")

@@ -2,8 +2,8 @@ package dev.minevoice.neoforge.server;
 
 import dev.minevoice.common.util.MineVoiceLogger;
 import dev.minevoice.neoforge.config.MineVoiceModConfig;
-import dev.minevoice.standalone.StandaloneVoiceServer;
-import dev.minevoice.standalone.config.StandaloneConfig;
+import dev.minevoice.server.CoreVoiceServer;
+import dev.minevoice.server.config.CoreVoiceServerConfig;
 
 import dev.minevoice.common.protocol.VoicePlayerState;
 import java.util.Collection;
@@ -13,7 +13,7 @@ public final class IntegratedVoiceServerManager {
     private final MineVoiceModConfig config;
     private final MineVoiceLogger logger;
     private final AtomicBoolean running = new AtomicBoolean();
-    private StandaloneVoiceServer voiceServer;
+    private CoreVoiceServer voiceServer;
     private Thread serverThread;
     private volatile String lastError = "";
 
@@ -27,7 +27,7 @@ public final class IntegratedVoiceServerManager {
             return;
         }
         lastError = "";
-        StandaloneConfig standaloneConfig = new StandaloneConfig(
+        CoreVoiceServerConfig standaloneConfig = new CoreVoiceServerConfig(
                 config.localVoiceBindHost(),
                 config.localVoiceBindPort(),
                 config.sharedSecret(),
@@ -36,7 +36,7 @@ public final class IntegratedVoiceServerManager {
                 true,
                 config.enableDebugLog()
         );
-        voiceServer = new StandaloneVoiceServer(standaloneConfig);
+        voiceServer = new CoreVoiceServer(standaloneConfig);
         serverThread = new Thread(() -> {
             try {
                 logger.info("MineVOICE local voice server starting on "

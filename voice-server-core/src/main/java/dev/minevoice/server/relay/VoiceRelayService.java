@@ -1,11 +1,11 @@
-package dev.minevoice.standalone.relay;
+package dev.minevoice.server.relay;
 
 import dev.minevoice.common.protocol.VoiceFrame;
 import dev.minevoice.common.protocol.VoiceChannel;
 import dev.minevoice.common.protocol.VoicePlayerState;
 import dev.minevoice.common.session.VoiceSession;
 import dev.minevoice.common.session.VoiceSessionState;
-import dev.minevoice.standalone.session.VoiceSessionRegistry;
+import dev.minevoice.server.session.VoiceSessionRegistry;
 
 import java.util.List;
 

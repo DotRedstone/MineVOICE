@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     api project(":common")
+    api project(":voice-server-core")
     implementation "io.github.jaredmdobson:concentus:${concentus_version}"
     testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.11.4"
@@ -18,7 +19,6 @@ dependencies {
 }
 
 sourceSets.main.java.srcDir "../common/src/main/java"
-sourceSets.main.java.srcDir "../standalone-server/src/main/java"
 
 base {
     archivesName = "minevoice-neoforge"

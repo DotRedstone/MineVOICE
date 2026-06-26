@@ -90,7 +90,27 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         }
         long context = 0L;
         try {
-            context = alcCreateContext(device);
+            IntBuffer attrs = null;
+            if (settings != null && settings.hrtfEnabled()) {
+                if (alcIsExtensionPresent(device, "ALC_SOFT_HRTF")) {
+                    ByteBuffer bb = ByteBuffer.allocateDirect(3 * 4).order(ByteOrder.nativeOrder());
+                    attrs = bb.asIntBuffer();
+                    attrs.put(new int[] { 0x1992, 1, 0 });
+                    attrs.flip();
+                    LOGGER.info("MineVOICE OpenAL HRTF: Requested ALC_SOFT_HRTF (Enabled)");
+                } else {
+                    LOGGER.warn("MineVOICE OpenAL HRTF: ALC_SOFT_HRTF extension is not supported by this device");
+                }
+            } else if (settings != null && !settings.hrtfEnabled()) {
+                if (alcIsExtensionPresent(device, "ALC_SOFT_HRTF")) {
+                    ByteBuffer bb = ByteBuffer.allocateDirect(3 * 4).order(ByteOrder.nativeOrder());
+                    attrs = bb.asIntBuffer();
+                    attrs.put(new int[] { 0x1992, 0, 0 });
+                    attrs.flip();
+                    LOGGER.info("MineVOICE OpenAL HRTF: Requested ALC_SOFT_HRTF (Disabled)");
+                }
+            }
+            context = alcCreateContext(device, attrs);
             if (context == 0L || !alcMakeContextCurrent(context)) {
                 throw new IllegalStateException("failed to create OpenAL context");
             }
@@ -358,8 +378,12 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         return (Boolean) invoke("org.lwjgl.openal.ALC10", "alcCloseDevice", new Class<?>[]{long.class}, device);
     }
 
-    private static long alcCreateContext(long device) {
-        return (Long) invoke("org.lwjgl.openal.ALC10", "alcCreateContext", new Class<?>[]{long.class, IntBuffer.class}, device, null);
+    private static long alcCreateContext(long device, IntBuffer attrs) {
+        return (Long) invoke("org.lwjgl.openal.ALC10", "alcCreateContext", new Class<?>[]{long.class, IntBuffer.class}, device, attrs);
+    }
+    
+    private static boolean alcIsExtensionPresent(long device, String extName) {
+        return (Boolean) invoke("org.lwjgl.openal.ALC10", "alcIsExtensionPresent", new Class<?>[]{long.class, CharSequence.class}, device, extName);
     }
 
     private static void alcDestroyContext(long context) {

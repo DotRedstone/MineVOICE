@@ -1,11 +1,11 @@
-package dev.minevoice.standalone.udp;
+package dev.minevoice.server.udp;
 
 import dev.minevoice.common.util.MineVoiceLogger;
 import dev.minevoice.common.auth.AuthTokenValidator;
 import dev.minevoice.common.network.BandwidthCounter;
-import dev.minevoice.standalone.relay.VoiceRelayService;
-import dev.minevoice.standalone.config.StandaloneConfig;
-import dev.minevoice.standalone.session.VoiceSessionRegistry;
+import dev.minevoice.server.relay.VoiceRelayService;
+import dev.minevoice.server.config.CoreVoiceServerConfig;
+import dev.minevoice.server.session.VoiceSessionRegistry;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -15,14 +15,14 @@ import java.net.SocketException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class UdpVoiceServer {
-    private final StandaloneConfig config;
+    private final CoreVoiceServerConfig config;
     private final MineVoiceLogger logger;
     private final UdpPacketHandler packetHandler;
     private final AtomicBoolean running = new AtomicBoolean();
     private DatagramSocket socket;
 
     public UdpVoiceServer(
-            StandaloneConfig config,
+            CoreVoiceServerConfig config,
             MineVoiceLogger logger,
             AuthTokenValidator tokenValidator,
             VoiceSessionRegistry sessionRegistry,

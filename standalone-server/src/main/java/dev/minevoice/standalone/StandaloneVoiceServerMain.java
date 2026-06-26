@@ -1,19 +1,20 @@
 package dev.minevoice.standalone;
 
-import dev.minevoice.standalone.config.StandaloneConfig;
-import dev.minevoice.standalone.config.StandaloneConfigLoader;
-
+import dev.minevoice.server.config.CoreVoiceServerConfig;
+import dev.minevoice.server.config.CoreVoiceServerConfigLoader;
+import dev.minevoice.server.CoreVoiceServer;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public final class StandaloneVoiceServerMain {
-    private StandaloneVoiceServerMain() {
-    }
+    private StandaloneVoiceServerMain() {}
 
     public static void main(String[] args) {
-        Path configPath = args.length > 0 ? Path.of(args[0]) : Path.of("minevoice-standalone.properties");
-        StandaloneConfig config = new StandaloneConfigLoader().load(configPath);
-        StandaloneVoiceServer server = new StandaloneVoiceServer(config);
-        Runtime.getRuntime().addShutdownHook(new Thread(server::stop, "minevoice-shutdown"));
+        Path configPath = Paths.get("config", "minevoice-server.properties");
+        CoreVoiceServerConfig config = new CoreVoiceServerConfigLoader().load(configPath);
+        CoreVoiceServer server = new CoreVoiceServer(config);
         server.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
     }
 }

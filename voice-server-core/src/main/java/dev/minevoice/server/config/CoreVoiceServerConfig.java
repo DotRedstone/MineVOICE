@@ -1,8 +1,8 @@
-package dev.minevoice.standalone.config;
+package dev.minevoice.server.config;
 
 import dev.minevoice.common.config.VoiceConstants;
 
-public record StandaloneConfig(
+public record CoreVoiceServerConfig(
         String bindHost,
         int bindPort,
         String sharedSecret,
@@ -11,8 +11,8 @@ public record StandaloneConfig(
         boolean enableBandwidthStats,
         boolean enableDebugLog
 ) {
-    public static StandaloneConfig defaults() {
-        return new StandaloneConfig(
+    public static CoreVoiceServerConfig defaults() {
+        return new CoreVoiceServerConfig(
                 "0.0.0.0",
                 VoiceConstants.DEFAULT_UDP_PORT,
                 "change-me",
