@@ -3,7 +3,6 @@ package dev.minevoice.neoforge.client.screen;
 import dev.minevoice.neoforge.client.ClientAudioSettings;
 import dev.minevoice.neoforge.client.MineVoiceClientBootstrap;
 import dev.minevoice.neoforge.client.VoiceGroupSummary;
-import dev.minevoice.neoforge.client.hud.VoiceParticipantOverlay;
 import dev.minevoice.neoforge.network.VoiceRosterEntry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -142,6 +141,24 @@ public final class MineVoiceGroupScreen extends Screen {
             addButton(Component.translatable("screen.minevoice.group.leave"),
                     left + panelWidth() - 80, panelTop() + panelHeight() - 25, 74, 19,
                     button -> MineVoiceClientBootstrap.leaveGroup());
+            int colorLeft = left + panelWidth() / 2 - 40;
+              int colorTop = panelTop() + panelHeight() - 25;
+              net.minecraft.client.gui.components.EditBox colorBox = new net.minecraft.client.gui.components.EditBox(Minecraft.getInstance().font, colorLeft, colorTop + 1, 55, 17, Component.empty());
+              colorBox.setMaxLength(7);
+              colorBox.setValue(String.format("#%06X", MineVoiceClientBootstrap.settings().groupMemberColor() & 0xFFFFFF));
+              colorBox.setResponder(text -> {
+                  try {
+                      int color = Integer.parseInt(text.replace("#", ""), 16);
+                      MineVoiceClientBootstrap.setGroupMemberColor(color);
+                  } catch (NumberFormatException ignored) {}
+              });
+              addRenderableWidget(colorBox);
+
+              addButton(Component.literal("🎨"), colorLeft + 58, colorTop, 22, 19, button -> {
+                  int next = nextGroupMemberColor(MineVoiceClientBootstrap.settings().groupMemberColor());
+                  MineVoiceClientBootstrap.setGroupMemberColor(next);
+                  colorBox.setValue(String.format("#%06X", next & 0xFFFFFF));
+              });
             return;
         }
 
@@ -255,6 +272,19 @@ public final class MineVoiceGroupScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    private int nextGroupMemberColor(int current) {
+        return switch (current) {
+            case 0xFFFFFF -> 0x55FF55;
+            case 0x55FF55 -> 0x55FFFF;
+            case 0x55FFFF -> 0xFF5555;
+            case 0xFF5555 -> 0xFF55FF;
+            case 0xFF55FF -> 0xFFFF55;
+            case 0xFFFF55 -> 0xAAAAAA;
+            case 0xAAAAAA -> 0xFFFFFF;
+            default -> 0xFFFFFF;
+        };
+    }
+
     @Override
     public void onClose() {
         Minecraft.getInstance().setScreen(parent);
@@ -327,13 +357,28 @@ public final class MineVoiceGroupScreen extends Screen {
         renderScrollbar(graphics, left, rowTop + GROUP_LIST_OFFSET, groups.size(), visibleRows);
     }
 
+    private static void drawFace(GuiGraphics graphics, Minecraft minecraft, UUID playerId, int x, int y, int size, int color) {
+        ResourceLocation texture = net.minecraft.client.resources.DefaultPlayerSkin.get(playerId).texture();
+        if (minecraft.getConnection() != null) {
+            net.minecraft.client.multiplayer.PlayerInfo playerInfo = minecraft.getConnection().getPlayerInfo(playerId);
+            if (playerInfo != null) {
+                texture = playerInfo.getSkin().texture();
+            }
+        }
+        if (color != 0) {
+            graphics.fill(x - 2, y - 2, x + size + 2, y + size + 2, 0xFF000000 | color);
+        }
+        net.minecraft.client.gui.components.PlayerFaceRenderer.draw(graphics, texture, x, y, size);
+    }
+
     private void renderPlayerRow(GuiGraphics graphics, Minecraft minecraft, VoiceRosterEntry entry, int left, int y) {
         boolean speaking = MineVoiceClientBootstrap.speakerTracker().isSpeaking(entry.playerId());
         int rowLeft = listContentLeft(left);
         int rowWidth = listContentWidth();
         boolean self = isSelf(entry.playerId());
         MineVoicePanelStyle.renderSocialRow(graphics, rowLeft, y, rowWidth, ROW_HEIGHT, speaking);
-        VoiceParticipantOverlay.drawFace(graphics, minecraft, entry.playerId(), rowLeft + 4, y + 6, 24);
+        int colorToDraw = (entry.groupId() != null) ? entry.groupColor() : 0;
+        drawFace(graphics, minecraft, entry.playerId(), rowLeft + 4, y + 6, 24, colorToDraw);
         int nameX = rowLeft + 36;
         int controlsLeft = searchRight(left) - PLAYER_CONTROLS_WIDTH;
         int nameRight = self ? left + panelWidth() - 52 : controlsLeft - 18;

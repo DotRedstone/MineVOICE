@@ -11,7 +11,7 @@ import dev.minevoice.neoforge.client.audio.JavaSoundAudioDeviceTester;
 import dev.minevoice.neoforge.client.audio.SoundPhysicsCompat;
 import dev.minevoice.neoforge.client.audio.VoicePlaybackStats;
 import dev.minevoice.neoforge.client.audio.VoiceSpatialDebugSnapshot;
-import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
+
 import dev.minevoice.neoforge.client.ui.MineVoiceSettingsScreenModel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -122,52 +122,58 @@ public final class MineVoiceSettingsScreen extends Screen {
     }
 
     private void initVoiceTab(int left, int y, int contentWidth) {
-        addButton(publicActivationModeMessage(), left, y, contentWidth, ROW_HEIGHT, button -> {
-                    model.setActivationMode(nextActivationMode());
-                    button.setMessage(publicActivationModeMessage());
-                });
-        addRenderableWidget(new VolumeSlider(left, y + 21, contentWidth, ROW_HEIGHT, "screen.minevoice.public_voice_activation_threshold", model.voiceActivationThreshold()) {
+        int halfWidth = (contentWidth - 3) / 2;
+        int rightX = left + (contentWidth + 3) / 2;
+
+        addButton(publicActivationModeMessage(), left, y, halfWidth, ROW_HEIGHT, button -> {
+            model.setActivationMode(nextActivationMode());
+            button.setMessage(publicActivationModeMessage());
+        });
+        addButton(groupActivationModeMessage(), rightX, y, halfWidth, ROW_HEIGHT, button -> {
+            model.setGroupActivationMode(nextGroupActivationMode());
+            button.setMessage(groupActivationModeMessage());
+        });
+        
+        addRenderableWidget(new VolumeSlider(left, y + 21, halfWidth, ROW_HEIGHT, "screen.minevoice.public_voice_activation_threshold", model.voiceActivationThreshold()) {
             @Override
             protected void applyValue() {
                 model.setVoiceActivationThreshold((float) value);
             }
         });
-        addButton(groupActivationModeMessage(), left, y + 42, contentWidth, ROW_HEIGHT, button -> {
-            model.setGroupActivationMode(nextGroupActivationMode());
-            button.setMessage(groupActivationModeMessage());
-        });
-        addRenderableWidget(new VolumeSlider(left, y + 63, contentWidth, ROW_HEIGHT, "screen.minevoice.group_voice_activation_threshold", model.groupVoiceActivationThreshold()) {
+        addRenderableWidget(new VolumeSlider(rightX, y + 21, halfWidth, ROW_HEIGHT, "screen.minevoice.group_voice_activation_threshold", model.groupVoiceActivationThreshold()) {
             @Override
             protected void applyValue() {
                 model.setGroupVoiceActivationThreshold((float) value);
             }
         });
-        addToggle(left, y + 84, contentWidth, "screen.minevoice.spatial_audio", model.spatialAudioEnabled(),
+        
+        addToggle(left, y + 42, contentWidth, "screen.minevoice.spatial_audio", model.spatialAudioEnabled(),
                 model::setSpatialAudioEnabled);
-        addButton(playbackBackendMessage(), left, y + 105, contentWidth, ROW_HEIGHT, button -> {
+        
+        addButton(playbackBackendMessage(), left, y + 63, contentWidth, ROW_HEIGHT, button -> {
             model.setAudioPlaybackBackend(nextPlaybackBackend());
             button.setMessage(playbackBackendMessage());
         });
-        addToggle(left, y + 126, contentWidth, "screen.minevoice.muted", model.muted(), model::setMuted);
-        addToggle(left, y + 147, contentWidth, "screen.minevoice.deafened", model.deafened(), model::setDeafened);
-    }
+            }
 
     private void initUiTab(int left, int y, int contentWidth) {
         addToggle(left, y, contentWidth, "screen.minevoice.hud_enabled", model.hudEnabled(),
                 model::setHudEnabled);
         addToggle(left, y + 21, contentWidth, "screen.minevoice.nameplate_icons_enabled", model.nameplateIconsEnabled(),
                 model::setNameplateIconsEnabled);
-        addToggle(left, y + 42, contentWidth, "screen.minevoice.speaker_hud_enabled", model.speakerHudEnabled(),
-                model::setSpeakerHudEnabled);
-        addToggle(left, y + 63, contentWidth, "screen.minevoice.group_hud_enabled", model.groupHudEnabled(),
-                model::setGroupHudEnabled);
-        addButton(hudIconSizeMessage(), left, y + 84, contentWidth, ROW_HEIGHT, button -> {
-            model.setHudIconSize(MineVoiceHudStyle.nextIconSize(model.hudIconSize()));
+        addButton(hudIconSizeMessage(), left, y + 42, contentWidth, ROW_HEIGHT, button -> {
+            int current = model.hudIconSize();
+            int next = current <= 16 ? 24 : (current <= 24 ? 32 : 16);
+            model.setHudIconSize(next);
             button.setMessage(hudIconSizeMessage());
         });
-        addButton(hudAvatarAnchorMessage(), left, y + 105, contentWidth, ROW_HEIGHT, button -> {
-            model.setHudAvatarAnchor(model.hudAvatarAnchor().next());
-            button.setMessage(hudAvatarAnchorMessage());
+        addButton(outOfSightIndicatorMessage(), left, y + 63, contentWidth, ROW_HEIGHT, button -> {
+            model.setOutOfSightIndicatorMode((model.outOfSightIndicatorMode() + 1) % 3);
+            button.setMessage(outOfSightIndicatorMessage());
+        });
+        addButton(occludedIndicatorMessage(), left, y + 84, contentWidth, ROW_HEIGHT, button -> {
+            model.setOccludedIndicatorMode((model.occludedIndicatorMode() + 1) % 2);
+            button.setMessage(occludedIndicatorMessage());
         });
     }
 
@@ -176,8 +182,10 @@ public final class MineVoiceSettingsScreen extends Screen {
             model.setDebugInfoLevel(model.debugInfoLevel().next());
             button.setMessage(debugLevelMessage());
         });
+        addToggle(left, y + 21, contentWidth, "screen.minevoice.debug_render_rays", model.debugRenderRays(),
+                model::setDebugRenderRays);
         addButton(Component.translatable("screen.minevoice.print_debug_snapshot"),
-                left, y + 24, contentWidth, ROW_HEIGHT, button -> {
+                left, y + 42, contentWidth, ROW_HEIGHT, button -> {
                     if (minecraft != null && minecraft.player != null) {
                         minecraft.player.displayClientMessage(debugSnapshot(), false);
                     }
@@ -209,7 +217,7 @@ public final class MineVoiceSettingsScreen extends Screen {
 
     @Override
     public void onClose() {
-        closeWithoutSaving();
+        saveAndClose();
     }
 
     @Override
@@ -309,11 +317,25 @@ public final class MineVoiceSettingsScreen extends Screen {
         return Component.translatable("screen.minevoice.hud_icon_size", model.hudIconSize());
     }
 
-    private Component hudAvatarAnchorMessage() {
-        return Component.translatable("screen.minevoice.hud_avatar_anchor")
-                .append(": ")
-                .append(Component.translatable(model.hudAvatarAnchor().translationKey()));
+    private Component outOfSightIndicatorMessage() {
+        String key = switch (model.outOfSightIndicatorMode()) {
+            case 1 -> "screen.minevoice.indicator.avatar";
+            case 2 -> "screen.minevoice.indicator.arrow";
+            default -> "screen.minevoice.indicator.none";
+        };
+        return Component.translatable("screen.minevoice.out_of_sight_indicator").append(": ").append(Component.translatable(key));
     }
+
+    private Component occludedIndicatorMessage() {
+        String key = switch (model.occludedIndicatorMode()) {
+            case 1 -> "screen.minevoice.indicator.avatar";
+            default -> "screen.minevoice.indicator.none";
+        };
+        return Component.translatable("screen.minevoice.occluded_indicator").append(": ").append(Component.translatable(key));
+    }
+
+    
+
 
     private Component playbackBackendMessage() {
         return Component.translatable("screen.minevoice.audio_playback_backend")

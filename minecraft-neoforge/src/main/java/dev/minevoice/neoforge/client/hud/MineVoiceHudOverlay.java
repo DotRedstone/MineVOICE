@@ -45,17 +45,60 @@ public final class MineVoiceHudOverlay {
         GuiGraphics graphics = event.getGuiGraphics();
         int iconSize = settings.hudIconSize();
         int top = graphics.guiHeight() - iconSize - BOTTOM;
+                setIconColor(graphics, state, settings, directory, speakers);
         graphics.blitSprite(currentHudIcon(state, settings), LEFT, top, iconSize, iconSize);
-        if (state.groupPushToTalkDown()) {
-            renderGroupTalkBadge(graphics, minecraft.font, LEFT + iconSize + 4, top, iconSize);
-        }
-        VoiceParticipantOverlay.render(graphics, settings, directory, speakers, LEFT, top, iconSize);
+        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        
+        ProximityEdgeIndicators.onRenderGuiPost(event);
     }
 
-    private static void renderGroupTalkBadge(GuiGraphics graphics, Font font, int left, int top, int iconSize) {
-        int width = Math.max(16, iconSize);
-        MineVoiceHudStyle.renderSlot(graphics, left, top, width, true);
-        graphics.drawCenteredString(font, "G", left + width / 2, top + (iconSize - 8) / 2, MineVoiceHudStyle.TEXT);
+
+
+    
+    private static void setIconColor(GuiGraphics graphics, VoiceHudState state, ClientAudioSettings settings, VoicePlayerDirectory directory, VoiceSpeakerTracker speakers) {
+        if (state.transmitting()) {
+            if (state.groupPushToTalkDown()) {
+                setColorFromInt(graphics, settings.groupMemberColor());
+            } else {
+                graphics.setColor(0.7f, 0.7f, 0.7f, 1.0f);
+            }
+            return;
+        }
+
+        java.util.List<java.util.UUID> active = speakers.activeSpeakers(10);
+        if (active.isEmpty()) {
+            graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+            return;
+        }
+
+        boolean teamSpeaking = false;
+        int teamColor = 0;
+        
+        java.util.UUID myId = Minecraft.getInstance().player.getUUID();
+        dev.minevoice.neoforge.network.VoiceRosterEntry myEntry = directory.get(myId);
+        java.util.UUID myGroupId = myEntry != null ? myEntry.groupId() : null;
+
+        for (java.util.UUID playerId : active) {
+            dev.minevoice.neoforge.network.VoiceRosterEntry entry = directory.get(playerId);
+            if (entry != null && myGroupId != null && myGroupId.equals(entry.groupId())) {
+                teamSpeaking = true;
+                teamColor = entry.groupColor();
+                break;
+            }
+        }
+        
+        if (teamSpeaking) {
+            setColorFromInt(graphics, teamColor);
+        } else {
+            graphics.setColor(0.7f, 0.7f, 0.7f, 1.0f);
+        }
+    }
+
+    private static void setColorFromInt(GuiGraphics graphics, int color) {
+        float r = ((color >> 16) & 0xFF) / 255.0f;
+        float g = ((color >> 8) & 0xFF) / 255.0f;
+        float b = (color & 0xFF) / 255.0f;
+        graphics.setColor(r, g, b, 1.0f);
     }
 
     private static ResourceLocation currentHudIcon(VoiceHudState state, ClientAudioSettings settings) {
