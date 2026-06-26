@@ -51,6 +51,7 @@
   "screen.minevoice.public_voice_activation_threshold": "Public Trigger Threshold: %s%%",
   "screen.minevoice.group_voice_activation_threshold": "Group Trigger Threshold: %s%%",
   "screen.minevoice.spatial_audio": "Enable 3D Spatial Audio",
+  "screen.minevoice.audio_playback_backend": "Playback Backend",
   "screen.minevoice.muted": "Mute Microphone",
   "screen.minevoice.deafened": "Deafen",
   "screen.minevoice.hud_enabled": "Show HUD",

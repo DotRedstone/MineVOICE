@@ -101,6 +101,7 @@ voiceChatVolume=1.0
 microphoneVolume=1.0
 spatialAudioEnabled=true
 voiceCodec=opus
+audioPlaybackBackend=auto
 muted=false
 deafened=false
 showDebugConnectionInfo=false
@@ -110,3 +111,5 @@ groupVoiceActivationThreshold=0.35
 hudEnabled=true
 nameplateIconsEnabled=true
 ```
+
+`audioPlaybackBackend` 支持 `auto`、`java-sound`、`openal`。默认 `auto` 会继续使用 Java Sound 稳定路径；手动选择 `openal` 时客户端会尝试使用独立 OpenAL context 和 per-speaker source，初始化失败会回落到 Java Sound。

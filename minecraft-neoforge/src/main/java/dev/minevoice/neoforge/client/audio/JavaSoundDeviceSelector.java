@@ -4,6 +4,7 @@ import dev.minevoice.neoforge.client.AudioDevice;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.Mixer;
+import java.util.StringJoiner;
 
 public final class JavaSoundDeviceSelector {
     private JavaSoundDeviceSelector() {
@@ -36,5 +37,29 @@ public final class JavaSoundDeviceSelector {
         } catch (Exception exception) {
             throw new IllegalStateException("failed to open audio line for device: " + configuredId, exception);
         }
+    }
+
+    public static String lineSignature(String configuredId, DataLine.Info lineInfo) {
+        Mixer.Info selected = selectMixer(configuredId, lineInfo);
+        if (selected != null) {
+            return "selected:" + AudioDevice.fromMixer(selected).id();
+        }
+        try {
+            Mixer defaultMixer = AudioSystem.getMixer(null);
+            if (defaultMixer.isLineSupported(lineInfo)) {
+                return "default:" + AudioDevice.fromMixer(defaultMixer.getMixerInfo()).id();
+            }
+        } catch (Exception ignored) {
+            // Some Java Sound providers do not expose the default mixer through getMixer(null).
+        }
+
+        StringJoiner joiner = new StringJoiner("|", "default-supported:", "");
+        for (Mixer.Info mixerInfo : AudioSystem.getMixerInfo()) {
+            Mixer mixer = AudioSystem.getMixer(mixerInfo);
+            if (mixer.isLineSupported(lineInfo)) {
+                joiner.add(AudioDevice.fromMixer(mixerInfo).id());
+            }
+        }
+        return joiner.toString();
     }
 }

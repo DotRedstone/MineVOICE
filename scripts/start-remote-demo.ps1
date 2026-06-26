@@ -55,6 +55,7 @@ activationMode=PUSH_TO_TALK
 voiceActivationThreshold=0.35
 spatialAudioEnabled=true
 voiceCodec=opus
+audioPlaybackBackend=auto
 muted=false
 deafened=false
 showDebugConnectionInfo=true

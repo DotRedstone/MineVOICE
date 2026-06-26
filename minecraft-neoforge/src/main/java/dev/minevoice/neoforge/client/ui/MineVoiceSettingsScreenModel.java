@@ -19,6 +19,7 @@ public final class MineVoiceSettingsScreenModel {
     private float groupVoiceActivationThreshold;
     private boolean spatialAudioEnabled;
     private String voiceCodec;
+    private String audioPlaybackBackend;
     private boolean muted;
     private boolean deafened;
     private boolean hudEnabled;
@@ -42,6 +43,7 @@ public final class MineVoiceSettingsScreenModel {
         groupVoiceActivationThreshold = settings.groupVoiceActivationThreshold();
         spatialAudioEnabled = settings.spatialAudioEnabled();
         voiceCodec = settings.voiceCodec();
+        audioPlaybackBackend = settings.audioPlaybackBackend();
         muted = settings.muted();
         deafened = settings.deafened();
         hudEnabled = settings.hudEnabled();
@@ -71,6 +73,7 @@ public final class MineVoiceSettingsScreenModel {
                 groupVoiceActivationThreshold,
                 spatialAudioEnabled,
                 voiceCodec,
+                audioPlaybackBackend,
                 muted,
                 deafened,
                 hudEnabled,
@@ -97,6 +100,7 @@ public final class MineVoiceSettingsScreenModel {
         groupVoiceActivationThreshold = defaults.groupVoiceActivationThreshold;
         spatialAudioEnabled = defaults.spatialAudioEnabled;
         voiceCodec = defaults.voiceCodec;
+        audioPlaybackBackend = defaults.audioPlaybackBackend;
         muted = defaults.muted;
         deafened = defaults.deafened;
         hudEnabled = defaults.hudEnabled;
@@ -198,6 +202,14 @@ public final class MineVoiceSettingsScreenModel {
 
     public void setSpatialAudioEnabled(boolean spatialAudioEnabled) {
         this.spatialAudioEnabled = spatialAudioEnabled;
+    }
+
+    public String audioPlaybackBackend() {
+        return audioPlaybackBackend;
+    }
+
+    public void setAudioPlaybackBackend(String audioPlaybackBackend) {
+        this.audioPlaybackBackend = audioPlaybackBackend;
     }
 
     public boolean muted() {

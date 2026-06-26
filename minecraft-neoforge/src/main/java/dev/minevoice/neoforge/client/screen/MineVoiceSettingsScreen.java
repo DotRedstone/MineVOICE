@@ -144,8 +144,12 @@ public final class MineVoiceSettingsScreen extends Screen {
         });
         addToggle(left, y + 84, contentWidth, "screen.minevoice.spatial_audio", model.spatialAudioEnabled(),
                 model::setSpatialAudioEnabled);
-        addToggle(left, y + 105, contentWidth, "screen.minevoice.muted", model.muted(), model::setMuted);
-        addToggle(left, y + 126, contentWidth, "screen.minevoice.deafened", model.deafened(), model::setDeafened);
+        addButton(playbackBackendMessage(), left, y + 105, contentWidth, ROW_HEIGHT, button -> {
+            model.setAudioPlaybackBackend(nextPlaybackBackend());
+            button.setMessage(playbackBackendMessage());
+        });
+        addToggle(left, y + 126, contentWidth, "screen.minevoice.muted", model.muted(), model::setMuted);
+        addToggle(left, y + 147, contentWidth, "screen.minevoice.deafened", model.deafened(), model::setDeafened);
     }
 
     private void initUiTab(int left, int y, int contentWidth) {
@@ -311,6 +315,20 @@ public final class MineVoiceSettingsScreen extends Screen {
                 .append(Component.translatable(model.hudAvatarAnchor().translationKey()));
     }
 
+    private Component playbackBackendMessage() {
+        return Component.translatable("screen.minevoice.audio_playback_backend")
+                .append(": ")
+                .append(Component.literal(model.audioPlaybackBackend()));
+    }
+
+    private String nextPlaybackBackend() {
+        return switch (model.audioPlaybackBackend()) {
+            case "auto" -> "java-sound";
+            case "java-sound" -> "openal";
+            default -> "auto";
+        };
+    }
+
     private Component debugLevelMessage() {
         DebugInfoLevel level = model.debugInfoLevel();
         return Component.translatable("screen.minevoice.debug_level")
@@ -324,6 +342,7 @@ public final class MineVoiceSettingsScreen extends Screen {
                 + " groupMode=" + model.groupActivationMode()
                 + " mic=" + deviceSummary(model.microphoneDevice())
                 + " out=" + deviceSummary(model.outputDevice())
+                + " playbackBackend=" + model.audioPlaybackBackend()
                 + " hud=" + model.hudEnabled()
                 + " debug=" + model.debugInfoLevel()
                 + " "

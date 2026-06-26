@@ -39,6 +39,8 @@
 | 设备切换 | 未测 / 通过 / 失败 |  |
 | Opus 听感 | 未测 / 通过 / 失败 |  |
 
+详细步骤见 `docs/manual-regression-checklist.md`。
+
 ## 诊断输出
 
 记录 `/minevoice status`、`/minevoice test-endpoint`、设置页 debug snapshot 和 client-sim 带宽输出。

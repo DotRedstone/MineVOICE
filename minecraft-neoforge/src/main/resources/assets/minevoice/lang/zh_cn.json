@@ -51,6 +51,7 @@
   "screen.minevoice.public_voice_activation_threshold": "\u516c\u5171\u89e6\u53d1\u9608\u503c\uff1a%s%%",
   "screen.minevoice.group_voice_activation_threshold": "\u961f\u4f0d\u89e6\u53d1\u9608\u503c\uff1a%s%%",
   "screen.minevoice.spatial_audio": "\u542f\u7528 3D \u7a7a\u95f4\u97f3\u6548",
+  "screen.minevoice.audio_playback_backend": "\u64ad\u653e\u540e\u7aef",
   "screen.minevoice.muted": "\u9759\u97f3\u9ea6\u514b\u98ce",
   "screen.minevoice.deafened": "\u5c4f\u853d\u542c\u97f3",
   "screen.minevoice.hud_enabled": "\u663e\u793a HUD",

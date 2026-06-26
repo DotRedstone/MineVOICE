@@ -55,6 +55,7 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
                 floatProperty(properties, "groupVoiceActivationThreshold", defaults.groupVoiceActivationThreshold()),
                 booleanProperty(properties, "spatialAudioEnabled", defaults.spatialAudioEnabled()),
                 properties.getProperty("voiceCodec", defaults.voiceCodec()),
+                properties.getProperty("audioPlaybackBackend", defaults.audioPlaybackBackend()),
                 booleanProperty(properties, "muted", defaults.muted()),
                 booleanProperty(properties, "deafened", defaults.deafened()),
                 booleanProperty(properties, "hudEnabled", defaults.hudEnabled()),
@@ -83,6 +84,7 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         properties.setProperty("groupVoiceActivationThreshold", Float.toString(settings.groupVoiceActivationThreshold()));
         properties.setProperty("spatialAudioEnabled", Boolean.toString(settings.spatialAudioEnabled()));
         properties.setProperty("voiceCodec", settings.voiceCodec());
+        properties.setProperty("audioPlaybackBackend", settings.audioPlaybackBackend());
         properties.setProperty("muted", Boolean.toString(settings.muted()));
         properties.setProperty("deafened", Boolean.toString(settings.deafened()));
         properties.setProperty("hudEnabled", Boolean.toString(settings.hudEnabled()));

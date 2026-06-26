@@ -37,7 +37,7 @@ public final class MineVoiceGroupScreen extends Screen {
     private static final int SEARCH_ICON_LEFT_OFFSET = 10;
     private static final int SEARCH_BOX_LEFT_OFFSET = 28;
     private static final int SEARCH_BOX_TOP_OFFSET = 10;
-    private static final int SEARCH_BOX_HEIGHT = 15;
+    private static final int SEARCH_BOX_HEIGHT = 17;
     private static final int GROUP_JOINABLE_LABEL_OFFSET = 55;
     private static final int GROUP_LIST_OFFSET = 66;
     private static final int TEXT = 0xFF404040;
@@ -98,7 +98,8 @@ public final class MineVoiceGroupScreen extends Screen {
 
         int searchX = searchLeft(left);
         int searchY = top + FRAME_TOP_OFFSET + SEARCH_BOX_TOP_OFFSET;
-        searchBox = new EditBox(font, searchX, searchY, searchWidth(), SEARCH_BOX_HEIGHT, Component.translatable("screen.minevoice.group.search"));
+        searchBox = new EditBox(font, searchX + 4, searchY + 4, searchWidth() - 8, 10, Component.translatable("screen.minevoice.group.search"));
+        searchBox.setBordered(false);
         searchBox.setMaxLength(32);
         searchBox.setTextColor(0xFFFFFFFF);
         searchBox.setHint(Component.translatable("screen.minevoice.group.search").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY));
@@ -458,6 +459,7 @@ public final class MineVoiceGroupScreen extends Screen {
         int frameHeight = panelHeight() - FRAME_TOP_OFFSET - 30;
         MineVoicePanelStyle.renderSocialList(graphics, socialFrameLeft(left), frameTop, socialFrameWidth(), frameHeight);
         int searchY = frameTop + SEARCH_BOX_TOP_OFFSET;
+        MineVoicePanelStyle.renderSocialSearch(graphics, searchLeft(left), searchY, searchWidth(), SEARCH_BOX_HEIGHT);
         graphics.blitSprite(SEARCH_ICON, socialFrameLeft(left) + SEARCH_ICON_LEFT_OFFSET, searchY + 2, 12, 12);
     }
 
