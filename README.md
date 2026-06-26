@@ -26,15 +26,16 @@ Local 模式由 Minecraft 服务端 JVM 内启动 embedded UDP voice server；Re
 | --- | --- | --- |
 | 自动下发 endpoint/token | 可用 | Minecraft 服务端给每个玩家下发短期 HMAC token。 |
 | Remote 独立语音服务器 | 可用 | 独立 UDP 服务端继续可用。 |
-| Local 内置语音服务端 | 初步可用 | MC 服务端 `mode=local` 时自动启动 UDP 服务，停服释放端口。 |
-| Open to LAN 语音 | experimental | LAN host 可复用 Local 配置；多网卡场景建议手动指定 `localVoiceAdvertiseHost`。 |
+| Local 内置语音服务端 | 可用 | MC 服务端 `mode=local` 时自动启动 UDP 服务，停服释放端口。 |
+| Open to LAN 语音 | 可用 | LAN host 可复用 Local 配置；多网卡场景建议手动指定 `localVoiceAdvertiseHost`。 |
 | 范围语音 / 队伍语音 | 可用 | 范围语音按维度和距离路由，队伍语音不受距离限制。 |
-| 游戏内设备设置和 HUD | 可用 | 支持设备选择、输入/输出测试、静音、屏蔽听音、说话头像提示。 |
+| 游戏内设备设置和 HUD | 可用 | 支持设备选择、音频测试、环境音效开关，以及动态 3D-to-2D 屏幕投影玩家头像与屏幕边缘方位指示器。 |
+| 智能语音唤醒 (VAD) | 可用 | 允许玩家调节独立的公共频道/队伍频道触发阈值，过滤静音底噪，避免发送无用包。 |
 | 基础立体声方向感 | 可用 | Java Sound fallback 基于相对位置做左右声道 pan。 |
-| jitter buffer | 初步可用 | 接收端按说话者和 sequence 做基础乱序重排与迟到包丢弃。 |
-| Opus | experimental | 默认使用纯 Java Concentus Opus；服务端只转发 encoded frame，初始化失败可回退 `mock-pcm`。 |
-| OpenAL 位置音源 | planned | 暂未接入，Java Sound 是当前 fallback。 |
-| 基础遮挡 / 低通 | planned | 配置位已预留，真实遮挡采样和滤波仍待实现。 |
+| jitter buffer | 可用 | 接收端按说话者和 sequence 做基础乱序重排与迟到包丢弃。 |
+| Opus | 可用 | 默认使用纯 Java Concentus Opus；服务端只转发 encoded frame，初始化失败可回退 `mock-pcm`。 |
+| OpenAL 位置音源 | 可用 | 支持硬核 3D 空间音效（环境距离衰减、方向衰减）。 |
+| 基础遮挡 / 低通 | planned | 待接入完整的声学阻隔折算。 |
 | Sound Physics Remastered 兼容 | planned | 只作为 optional compat 设计方向，不是硬依赖。 |
 
 ## 快速配置

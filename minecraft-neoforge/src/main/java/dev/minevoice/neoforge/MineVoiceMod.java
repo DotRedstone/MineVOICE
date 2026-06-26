@@ -190,6 +190,7 @@ public final class MineVoiceMod {
                     }
                 }
                 case LEAVE -> voiceGroupManager.leave(player.getUUID());
+                case UPDATE_COLOR -> playerVoiceStates.setGroupColor(player.getUUID(), payload.color());
             }
             broadcastVoiceRoster();
             publishVoiceState(player.server);
@@ -217,7 +218,8 @@ public final class MineVoiceMod {
                 group == null ? null : group.id(),
                 group == null ? "" : group.name(),
                 group != null && group.passwordProtected(),
-                playerVoiceStates.muted(player.getUUID())
+                playerVoiceStates.muted(player.getUUID()),
+                playerVoiceStates.groupColor(player.getUUID())
         );
     }
 

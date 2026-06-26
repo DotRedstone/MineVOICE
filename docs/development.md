@@ -80,9 +80,9 @@ clients host port sharedSecret framesPerClient playerSpacing channel codec packe
 
 ## OpenAL 和空间策略
 
-Minecraft 本身使用 OpenAL。当前生产默认仍是 Java Sound fallback；`audioPlaybackBackend=openal` 会尝试创建独立 OpenAL context，并按远端说话者维护 source/buffer。OpenAL class 探测和调用使用反射，不额外引入 native 依赖；初始化、source 写入或上下文建立失败会回落到 Java Sound 路径。
+Minecraft 本身使用 OpenAL。当前生产默认仍是 Java Sound fallback；`audioPlaybackBackend=openal` 会尝试创建独立 OpenAL context，并按远端说话者维护 source/buffer。支持 EFX 时，每个 source 会使用直达声低通和 auxiliary reverb send；EFX 不可用时保留普通 OpenAL source。OpenAL class 探测和调用使用反射，不额外引入 native 依赖；初始化、source 写入或上下文建立失败会回落到 Java Sound 路径。
 
-当前 Java Sound 空间路径已包含基础 pan、距离衰减、遮挡降音量和轻量低通。遮挡采样发生在客户端 tick 的玩家位置刷新中，播放线程只读取快照，避免在音频线程扫方块。Sound Physics Remastered 只做安装探测和 fallback 标记，不调用第三方内部 API。
+当前空间路径已包含距离衰减、材质化直达声遮挡、一阶反射虚拟声源和环境混响快照。材质表在 `config/minevoice-acoustics.properties` 中独立维护；射线和方块采样发生在客户端 tick 的玩家位置刷新中，播放线程只读取快照，避免在音频线程扫方块。Sound Physics Remastered 只做安装探测和 fallback 标记，不调用第三方内部 API。
 
 ## 测试说明
 

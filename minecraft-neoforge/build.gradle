@@ -6,6 +6,9 @@ plugins {
 dependencies {
     api project(":common")
     implementation "io.github.jaredmdobson:concentus:${concentus_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.11.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     jarJar(implementation("io.github.jaredmdobson:concentus:${concentus_version}")) {
         version {
             strictly "[${concentus_version},)"
@@ -19,6 +22,30 @@ sourceSets.main.java.srcDir "../standalone-server/src/main/java"
 
 base {
     archivesName = "minevoice-neoforge"
+}
+
+def windowsTestRoot = new File(System.getProperty("java.io.tmpdir"), "minevoice-neoforge-test")
+def windowsMainOutput = new File(windowsTestRoot, "main")
+def windowsTestOutput = new File(windowsTestRoot, "test")
+
+def prepareWindowsMainOutput = tasks.register("prepareWindowsMainOutput", Sync) {
+    dependsOn tasks.named("classes")
+    from sourceSets.main.output
+    into windowsMainOutput
+}
+
+def prepareWindowsTestOutput = tasks.register("prepareWindowsTestOutput", Sync) {
+    dependsOn tasks.named("testClasses")
+    from sourceSets.test.output
+    into windowsTestOutput
+}
+
+tasks.named("test", Test).configure {
+    if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
+        dependsOn prepareWindowsMainOutput, prepareWindowsTestOutput
+        testClassesDirs = files(windowsTestOutput)
+        classpath = files(windowsTestOutput, windowsMainOutput, configurations.testRuntimeClasspath)
+    }
 }
 
 neoForge {

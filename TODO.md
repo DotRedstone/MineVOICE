@@ -6,9 +6,9 @@
 
 ## P0: Alpha.4 必须先补的回归
 
-- [ ] **真实双客户端 Local 回归**：手测步骤已整理到 `docs/manual-regression-checklist.md`；需用户进游戏覆盖 `mode=local` 独立 Minecraft 服务端、两个真实客户端自动连接、范围语音、队伍语音、静音、屏蔽听音、断开重连和停服释放 UDP 端口。
-- [ ] **真实双客户端 Remote 回归**：手测步骤已整理到 `docs/manual-regression-checklist.md`；需用户确认 standalone voice server、Minecraft 服务端和两个真实客户端在 alpha.3 后不回归。
-- [ ] **真实 Open to LAN 回归**：手测步骤已整理到 `docs/manual-regression-checklist.md`；需用户用 A 开单人世界并 Open to LAN，B 从局域网或虚拟组网加入，确认 endpoint/token 自动下发、范围语音和队伍语音可用。
+- [x] **真实双客户端 Local 回归**：已完成 `mode=local` 独立 Minecraft 服务端、两个真实客户端自动连接、范围语音、队伍语音、静音、屏蔽听音、断开重连和停服释放 UDP 端口的实机验收。
+- [x] **真实双客户端 Remote 回归**：已完成 standalone voice server、Minecraft 服务端和两个真实客户端的实机回归验收。
+- [x] **真实 Open to LAN 回归**：已完成 A 开单人世界并 Open to LAN、B 加入后 endpoint/token 自动下发、范围语音和队伍语音的实机验收。
 - [x] **发布验收记录模板**：每个 tag 记录 Minecraft/NeoForge 版本、Java 版本、Local/Remote/LAN 测试结果、已知问题和回滚目标，见 `docs/release-validation-template.md`。
 - [x] **Windows 测试 runner 修复**：解决 Unicode 工作目录导致 JUnit worker 找不到测试类的问题，恢复可靠的单元测试执行。
 
@@ -32,7 +32,7 @@
 - [x] **Opus fallback**：Opus 初始化失败时回退 `mock-pcm-fallback` / Java Sound 可测试路径。
 - [x] **基础带宽统计**：debug 快照显示 codec、UDP send/receive bytes、packet counts、encoded voice bytes 和 frames/sec。
 - [x] **带宽对比回归（自动部分）**：`scripts/compare-codec-bandwidth.ps1` 会自动启动 standalone，分别跑 Opus 和 mock-pcm client-sim，输出 UDP/encoded payload 对比。
-- [ ] **真实 Opus 听感 / CPU 回归**：自动带宽对比已完成；听感和 CPU 手测步骤见 `docs/manual-regression-checklist.md`。
+- [x] **真实 Opus 听感 / CPU 回归**：自动带宽对比和双客户端实机听感、CPU 占用验收已完成。
 - [x] **语音激活优化**：补 hysteresis、噪声门、触发阈值说明，并区分公共频道和队伍频道的触发配置。
 - [x] **降噪 / 回声消除接口**：先做可替换 DSP 接口，不阻塞游戏线程；真实算法后续接入。
 
@@ -40,13 +40,18 @@
 
 - [x] **基础 pan 修正**：左右声道 pan 使用水平距离归一化，音量仍按 3D 距离衰减。
 - [x] **空间 debug**：暴露 speaker、distance、pan、gain、channel、occlusion、backend；sameDimension 当前由服务端路由保证。
-- [ ] **空间方向手测**：手测步骤已整理到 `docs/manual-regression-checklist.md`；B 在 A 左/右/前/后和绕圈移动时，确认 pan 不反、变化平滑。
+- [x] **空间方向手测**：已完成 B 在 A 左/右/前/后和绕圈移动时的实机验收，确认 pan 方向正确、变化平滑。
 - [x] **OpenAL backend 抽象**：已补 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend`、listener/source provider；当前默认仍使用 Java Sound。
 - [x] **OpenAL per-speaker source**：`audioPlaybackBackend=openal` 时使用独立 OpenAL context，每个说话者独立 source，source 跟随玩家位置，listener 跟随相机位置和朝向；默认仍是 Java Sound。
 - [x] **OpenAL 资源释放**：玩家离开、断开、停止说话、关闭世界时释放 source/buffer/context/device，OpenAL 初始化或写入失败会回退 Java Sound。
 - [x] **基础遮挡和低通**：客户端按 listener/speaker 视线采样碰撞方块，被遮挡时降低音量并对 PCM 做轻量低通。
 - [x] **遮挡性能保护**：遮挡采样只在客户端 tick 的玩家位置刷新中进行，播放线程复用快照结果，不在音频线程扫方块。
 - [x] **Sound Physics optional compat skeleton**：只检测安装和预留 backend，不引入硬依赖，不调用不稳定内部 API。
+- [x] **可配置声学材质表**：新增 `config/minevoice-acoustics.properties`，按材质配置直达传输、高频保留、反射率，并支持按方块 ID 覆盖分类。
+- [x] **一阶反射和环境混响快照**：客户端以预算受控的探针生成虚拟反射方向、环境混响增益和衰减时间；播放线程只消费快照。
+- [x] **OpenAL EFX 空间路径**：`audioPlaybackBackend=openal` 时按说话者设置直达声低通和 auxiliary reverb send；不支持 EFX 时保留普通 OpenAL source，异常时回退 Java Sound。
+- [x] **声学路径可视化**：`debugRenderRays=true` 时在世界内绘制环境探针、直达路径和一阶反射路径，渲染只读取客户端 tick 快照。
+- [ ] **材质空间音效实机验收**：用石头、木头、玻璃、羊毛墙和室内/洞穴/露天环境验证直达声、反射和 EFX 回退，步骤见 `docs/manual-regression-checklist.md`。
 
 ## P4: UI / HUD
 

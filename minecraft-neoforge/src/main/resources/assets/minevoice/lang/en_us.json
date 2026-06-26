@@ -70,6 +70,7 @@
   "screen.minevoice.debug_level.basic": "Basic",
   "screen.minevoice.debug_level.verbose": "Verbose",
   "screen.minevoice.print_debug_snapshot": "Print Settings Snapshot to Chat",
+  "screen.minevoice.debug_render_rays": "Show Acoustic Debug Rays",
   "screen.minevoice.menu": "MineVOICE",
   "screen.minevoice.menu.mute": "Mute Microphone",
   "screen.minevoice.menu.unmute": "Unmute Microphone",
@@ -103,5 +104,11 @@
   "screen.minevoice.group.mute_player": "Mute",
   "screen.minevoice.group.unmute_player": "Unmute",
   "screen.minevoice.group.self": "Self",
-  "screen.minevoice.group.empty": "No active groups"
+  "screen.minevoice.group.empty": "No active groups",
+  "screen.minevoice.out_of_sight_indicator": "Out of Sight Indicator",
+  "screen.minevoice.occluded_indicator": "Occluded Indicator",
+  "screen.minevoice.group_member_color": "Group Member Color",
+  "screen.minevoice.indicator.none": "None",
+  "screen.minevoice.indicator.avatar": "Avatar",
+  "screen.minevoice.indicator.arrow": "Arrow"
 }

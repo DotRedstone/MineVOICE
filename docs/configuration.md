@@ -63,9 +63,9 @@ jitterBufferMs=60
 | 配置 | 当前状态 |
 | --- | --- |
 | `voiceCodec` | 默认 `opus`，使用纯 Java Concentus Opus。`mock` / `mock-pcm` 仍可用于调试和 fallback。 |
-| `audioPlaybackBackend` | 当前实际播放路径仍默认 Java Sound；代码已预留 OpenAL backend 抽象和 fallback。 |
-| `spatialBackend` | 当前为 Java Sound pan 空间化；OpenAL per-speaker source 仍是 planned。 |
-| `enableOcclusion` / `occlusionStrength` / `occlusionLowPass` | 客户端已有基础方块视线遮挡、降音量和轻量低通；配置项后续会继续细化为可调开关。 |
+| `audioPlaybackBackend` | `auto` / `java-sound` 使用兼容性播放路径；`openal` 使用每位说话者独立 source。支持 EFX 时会额外启用直达声低通和环境混响，不支持时保留普通 OpenAL source。 |
+| `spatialBackend` | 历史兼容字段。实际空间参数由客户端 `minevoice-acoustics.properties` 管理。 |
+| `enableOcclusion` / `occlusionStrength` / `occlusionLowPass` | 历史兼容字段。当前客户端使用材质化直达声遮挡：不同材料分别影响传输音量和高频保留。 |
 | `jitterBufferMs` | 文档口径为 60ms；当前 Java Sound 播放端使用 3 帧左右的基础 jitter buffer。 |
 
 ## 独立语音服务器配置
@@ -112,4 +112,34 @@ hudEnabled=true
 nameplateIconsEnabled=true
 ```
 
-`audioPlaybackBackend` 支持 `auto`、`java-sound`、`openal`。默认 `auto` 会继续使用 Java Sound 稳定路径；手动选择 `openal` 时客户端会尝试使用独立 OpenAL context 和 per-speaker source，初始化失败会回落到 Java Sound。
+`audioPlaybackBackend` 支持 `auto`、`java-sound`、`openal`。默认 `auto` 会继续使用 Java Sound 稳定路径；选择 `openal` 时客户端会尝试独立 OpenAL context、每位说话者独立 source，以及可选 EFX 滤镜/混响。初始化、EFX 或 source 写入失败会回落到 Java Sound。
+
+## 声学材质表
+
+文件：`config/minevoice-acoustics.properties`。客户端首次进入世界时自动生成；编辑后最多约一秒生效，不需要重启游戏。
+
+```properties
+enabled=true
+sourceRefreshIntervalMs=100
+environmentRefreshIntervalMs=400
+probeDistance=18.0
+probeCount=12
+maxOcclusionSamples=96
+reflectionStrength=0.85
+debugRenderRays=false
+
+# transmissionGain,highFrequencyGain,reflectivity
+material.stone=0.72,0.82,0.82
+material.wood=0.62,0.55,0.58
+material.metal=0.82,0.94,0.93
+material.glass=0.76,0.88,0.72
+material.wool=0.18,0.12,0.08
+material.soil=0.38,0.28,0.22
+material.snow=0.24,0.10,0.12
+
+# 指定方块可覆盖其默认 SoundType 材质分类
+block.minecraft.obsidian=stone
+block.example.acoustic_foam=wool
+```
+
+`transmissionGain` 控制穿过一层方块后的直达声音量，`highFrequencyGain` 控制高频保留，`reflectivity` 控制该材质参与一阶反射和环境混响的强度。`probeCount`、`maxOcclusionSamples` 越高，空间细节越多但客户端 CPU 开销也越高。`debugRenderRays=true` 会在世界内绘制青色环境探针、红/绿直达路径和橙色反射路径，适合调试，正常游玩请保持关闭。

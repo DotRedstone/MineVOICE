@@ -29,12 +29,14 @@
 2. 用 `.\scripts\compare-codec-bandwidth.ps1 -OutputPath "$env:TEMP\minevoice-bandwidth.txt"` 记录 Opus/mock-pcm 字节数。
 3. 观察两个客户端 CPU 占用，记录是否有爆音、延迟明显升高或掉包。
 
-## 空间方向和遮挡
+## 材质空间音效、方向和遮挡
 
 1. B 分别站在 A 的左、右、前、后，确认左右声像不反。
 2. B 绕 A 移动，确认 pan 变化平滑。
-3. B 站到墙后，确认声音有降低和变闷效果。
-4. 在设置页 Debug tab 记录 spatial 摘要中的 `distance`、`pan`、`gain`、`occlusion`。
+3. B 分别站在石头、木头、玻璃、羊毛墙后，确认声音的音量和闷感有可区分的变化；羊毛应最弱最闷。
+4. B 与 A 位于同一房间、洞穴和露天环境，确认室内有轻微空间尾音，露天不应有明显混响。
+5. 在设置页 Debug tab 记录 spatial 摘要中的 `distance`、`pan`、`direct`、`hf`、`reflect`、`probes`。
+6. 将 `config/minevoice-acoustics.properties` 的 `debugRenderRays` 改为 `true`，确认青色环境探针、红/绿直达路径和橙色反射路径会在世界中显示；改回 `false` 后应在约一秒内消失。
 
 ## 设备切换
 
@@ -45,6 +47,7 @@
 ## OpenAL 可选后端
 
 1. 设置页语音页把播放后端切到 `openal`。
-2. 重连语音后验证 Debug tab 的 `playback=openal`。
+2. 重连语音后验证 Debug tab 的 `playback=openal` 或 `playback=openal-efx`。
 3. 测试多人同屏说话、玩家移动、离开游戏、切回 Java Sound。
-4. 如果 OpenAL 初始化失败，确认 Debug tab 回落到 `java-sound` 且客户端没有崩溃。
+4. 在支持 EFX 的设备上确认室内环境有混响、隔墙声音有低通；不支持 EFX 时普通 OpenAL source 仍应正常播放。
+5. 如果 OpenAL 初始化失败，确认 Debug tab 回落到 `java-sound` 且客户端没有崩溃。

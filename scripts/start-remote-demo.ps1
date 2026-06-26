@@ -2,6 +2,10 @@ param(
     [string]$SharedSecret = "minevoice-remote-demo-secret",
     [int]$VoicePort = 24454,
     [int]$MinecraftPort = 25565,
+    [ValidateSet("survival", "creative", "adventure", "spectator")]
+    [string]$GameMode = "creative",
+    [ValidateSet("auto", "java-sound", "openal")]
+    [string]$AudioPlaybackBackend = "openal",
     [switch]$PrepareOnly
 )
 
@@ -11,8 +15,33 @@ $demoDirectory = Join-Path $PSScriptRoot "remote-demo"
 $serverRun = Join-Path $workspace "minecraft-neoforge\run\demo-server"
 $clientARun = Join-Path $workspace "minecraft-neoforge\run\demo-client-a"
 $clientBRun = Join-Path $workspace "minecraft-neoforge\run\demo-client-b"
+$demoPlayers = @("MineVoiceA", "MineVoiceB")
 
 New-Item -ItemType Directory -Force -Path $demoDirectory, "$serverRun\config", "$clientARun\config", "$clientBRun\config" | Out-Null
+
+function Get-OfflinePlayerUuid([string]$PlayerName) {
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    try {
+        $hash = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("OfflinePlayer:$PlayerName"))
+    } finally {
+        $md5.Dispose()
+    }
+
+    $hash[6] = ($hash[6] -band 0x0F) -bor 0x30
+    $hash[8] = ($hash[8] -band 0x3F) -bor 0x80
+    $hex = [System.BitConverter]::ToString($hash).Replace("-", "").ToLowerInvariant()
+    return "{0}-{1}-{2}-{3}-{4}" -f $hex.Substring(0, 8), $hex.Substring(8, 4), $hex.Substring(12, 4), $hex.Substring(16, 4), $hex.Substring(20, 12)
+}
+
+$demoOperators = @($demoPlayers | ForEach-Object {
+    [PSCustomObject]@{
+        uuid = Get-OfflinePlayerUuid $_
+        name = $_
+        level = 4
+        bypassesPlayerLimit = $false
+    }
+})
+$demoOperators | ConvertTo-Json | Set-Content -LiteralPath "$serverRun\ops.json" -Encoding ascii
 
 @"
 bindHost=0.0.0.0
@@ -41,6 +70,9 @@ eula=true
 online-mode=false
 server-port=$MinecraftPort
 enforce-secure-profile=false
+gamemode=$GameMode
+force-gamemode=true
+op-permission-level=4
 motd=MineVOICE Remote Demo
 "@ | Set-Content -LiteralPath "$serverRun\server.properties" -Encoding ascii
 
@@ -55,7 +87,7 @@ activationMode=PUSH_TO_TALK
 voiceActivationThreshold=0.35
 spatialAudioEnabled=true
 voiceCodec=opus
-audioPlaybackBackend=auto
+audioPlaybackBackend=$AudioPlaybackBackend
 muted=false
 deafened=false
 showDebugConnectionInfo=true
@@ -94,3 +126,4 @@ Start-DemoWindow "MineVOICE Client B" ".\gradlew.bat :minecraft-neoforge:runDemo
 
 Write-Host "MineVOICE Remote demo started."
 Write-Host "In both clients, join Multiplayer -> Direct Connection -> 127.0.0.1:$MinecraftPort"
+Write-Host "MineVoiceA and MineVoiceB are forced to $GameMode mode and receive OP level 4."

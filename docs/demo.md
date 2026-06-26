@@ -56,7 +56,7 @@ MineVOICE local voice endpoint advertised as <host>:24454
 3. B 在 A 正前和正后，左右应接近均衡。
 4. B 从左到右绕 A，pan 应平滑变化。
 
-当前空间化是 Java Sound 左右声道 pan，不是真正 OpenAL 位置音源。
+默认 `auto` 使用 Java Sound 兼容路径。设置为 `openal` 后，会启用每位说话者独立 OpenAL 位置音源；设备支持 EFX 时还会使用材质遮挡低通、一阶反射和环境混响。
 
 ## Debug 查看
 
