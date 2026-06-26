@@ -110,5 +110,6 @@
   "screen.minevoice.group_member_color": "队伍成员颜色",
   "screen.minevoice.indicator.none": "无",
   "screen.minevoice.indicator.avatar": "头像",
-  "screen.minevoice.indicator.arrow": "箭头"
+  "screen.minevoice.indicator.arrow": "箭头",
+  "screen.minevoice.hrtf_enabled": "开启 HRTF 头部追踪音效"
 }

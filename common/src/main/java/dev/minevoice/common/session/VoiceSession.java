@@ -8,6 +8,10 @@ public record VoiceSession(
         VoicePlayerInfo playerInfo,
         VoiceSessionState state,
         Instant createdAt,
-        Instant lastActivityAt
+        Instant lastActivityAt,
+        byte[] sessionKey
 ) {
+    public VoiceSession(UUID sessionId, VoicePlayerInfo playerInfo, VoiceSessionState state, Instant createdAt, Instant lastActivityAt) {
+        this(sessionId, playerInfo, state, createdAt, lastActivityAt, null);
+    }
 }

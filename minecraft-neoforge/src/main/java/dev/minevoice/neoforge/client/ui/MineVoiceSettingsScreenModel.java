@@ -24,6 +24,7 @@ public final class MineVoiceSettingsScreenModel {
     private int hudIconSize;
     private DebugInfoLevel debugInfoLevel;
     private boolean debugRenderRays;
+    private boolean hrtfEnabled;
     private int groupMemberColor;
     private int outOfSightIndicatorMode;
     private int occludedIndicatorMode;
@@ -49,6 +50,7 @@ public final class MineVoiceSettingsScreenModel {
         hudIconSize = settings.hudIconSize();
         debugInfoLevel = settings.debugInfoLevel();
         debugRenderRays = settings.debugRenderRays();
+        hrtfEnabled = settings.hrtfEnabled();
         groupMemberColor = settings.groupMemberColor();
         outOfSightIndicatorMode = settings.outOfSightIndicatorMode();
         occludedIndicatorMode = settings.occludedIndicatorMode();
@@ -82,7 +84,8 @@ public final class MineVoiceSettingsScreenModel {
                 debugRenderRays,
                 groupMemberColor,
                 outOfSightIndicatorMode,
-                occludedIndicatorMode
+                occludedIndicatorMode,
+                hrtfEnabled
         );
     }
 
@@ -263,7 +266,9 @@ public int hudIconSize() {
     }
 
     public boolean debugRenderRays() { return debugRenderRays; }
+    public boolean hrtfEnabled() { return hrtfEnabled; }
     public void setDebugRenderRays(boolean val) { this.debugRenderRays = val; }
+    public void setHrtfEnabled(boolean val) { this.hrtfEnabled = val; }
     public int groupMemberColor() { return groupMemberColor; }
     public void setGroupMemberColor(int val) { this.groupMemberColor = val; }
     public int outOfSightIndicatorMode() { return outOfSightIndicatorMode; }
