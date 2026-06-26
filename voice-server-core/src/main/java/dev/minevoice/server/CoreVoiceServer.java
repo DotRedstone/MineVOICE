@@ -1,32 +1,32 @@
-package dev.minevoice.standalone;
+package dev.minevoice.server;
 
 import dev.minevoice.common.config.VoiceConstants;
 import dev.minevoice.common.network.BandwidthCounter;
 import dev.minevoice.common.util.MineVoiceLogger;
-import dev.minevoice.standalone.auth.StandaloneTokenValidator;
-import dev.minevoice.standalone.config.StandaloneConfig;
-import dev.minevoice.standalone.relay.VoiceRelayService;
-import dev.minevoice.standalone.session.VoiceSessionRegistry;
-import dev.minevoice.standalone.metrics.ServerRuntimeStats;
-import dev.minevoice.standalone.udp.UdpVoiceServer;
+import dev.minevoice.server.auth.CoreTokenValidator;
+import dev.minevoice.server.config.CoreVoiceServerConfig;
+import dev.minevoice.server.relay.VoiceRelayService;
+import dev.minevoice.server.session.VoiceSessionRegistry;
+import dev.minevoice.server.metrics.ServerRuntimeStats;
+import dev.minevoice.server.udp.UdpVoiceServer;
 
 import dev.minevoice.common.protocol.VoicePlayerState;
 import java.util.Collection;
 
-public final class StandaloneVoiceServer {
-    private final StandaloneConfig config;
+public final class CoreVoiceServer {
+    private final CoreVoiceServerConfig config;
     private final MineVoiceLogger logger;
     private final UdpVoiceServer udpVoiceServer;
     private final BandwidthCounter bandwidthCounter = new BandwidthCounter();
     private final VoiceSessionRegistry sessionRegistry = new VoiceSessionRegistry();
 
-    public StandaloneVoiceServer(StandaloneConfig config) {
+    public CoreVoiceServer(CoreVoiceServerConfig config) {
         this.config = config;
         this.logger = new MineVoiceLogger("standalone", config.enableDebugLog());
         this.udpVoiceServer = new UdpVoiceServer(
                 config,
                 logger,
-                new StandaloneTokenValidator(config.sharedSecret()),
+                new CoreTokenValidator(config.sharedSecret()),
                 sessionRegistry,
                 new VoiceRelayService(sessionRegistry, config.proximityDistance()),
                 bandwidthCounter

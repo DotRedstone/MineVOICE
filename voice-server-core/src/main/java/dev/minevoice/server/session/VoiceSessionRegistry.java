@@ -1,4 +1,4 @@
-package dev.minevoice.standalone.session;
+package dev.minevoice.server.session;
 
 import dev.minevoice.common.session.VoiceSession;
 import dev.minevoice.common.session.VoiceSessionState;

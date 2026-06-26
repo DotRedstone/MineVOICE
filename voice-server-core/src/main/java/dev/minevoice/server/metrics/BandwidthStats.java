@@ -1,4 +1,4 @@
-package dev.minevoice.standalone.metrics;
+package dev.minevoice.server.metrics;
 
 import dev.minevoice.common.network.BandwidthCounter;
 

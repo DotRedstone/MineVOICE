@@ -150,7 +150,10 @@ public final class MineVoiceSettingsScreen extends Screen {
         addToggle(left, y + 42, contentWidth, "screen.minevoice.spatial_audio", model.spatialAudioEnabled(),
                 model::setSpatialAudioEnabled);
         
-        addButton(playbackBackendMessage(), left, y + 63, contentWidth, ROW_HEIGHT, button -> {
+        addToggle(left, y + 63, contentWidth, "screen.minevoice.hrtf_enabled", model.hrtfEnabled(),
+                model::setHrtfEnabled);
+        
+        addButton(playbackBackendMessage(), left, y + 84, contentWidth, ROW_HEIGHT, button -> {
             model.setAudioPlaybackBackend(nextPlaybackBackend());
             button.setMessage(playbackBackendMessage());
         });

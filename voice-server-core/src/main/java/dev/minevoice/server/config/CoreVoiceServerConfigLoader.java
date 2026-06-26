@@ -1,4 +1,4 @@
-package dev.minevoice.standalone.config;
+package dev.minevoice.server.config;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -6,9 +6,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-public final class StandaloneConfigLoader {
-    public StandaloneConfig load(Path path) {
-        StandaloneConfig defaults = StandaloneConfig.defaults();
+public final class CoreVoiceServerConfigLoader {
+    public CoreVoiceServerConfig load(Path path) {
+        CoreVoiceServerConfig defaults = CoreVoiceServerConfig.defaults();
         Properties properties = new Properties();
         if (Files.exists(path)) {
             try (InputStream input = Files.newInputStream(path)) {
@@ -19,7 +19,7 @@ public final class StandaloneConfigLoader {
             normalizeBomKey(properties, "bindHost");
         }
 
-        return new StandaloneConfig(
+        return new CoreVoiceServerConfig(
                 stringValue(properties, "bindHost", "MINEVOICE_BIND_HOST", defaults.bindHost()),
                 intValue(properties, "bindPort", "MINEVOICE_BIND_PORT", defaults.bindPort()),
                 stringValue(properties, "sharedSecret", "MINEVOICE_SHARED_SECRET", defaults.sharedSecret()),
