@@ -2,8 +2,6 @@ package dev.minevoice.neoforge.client;
 
 import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.neoforge.client.audio.VoicePlaybackBackendFactory;
-import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
-
 public record ClientAudioSettings(
         String microphoneDevice,
         String outputDevice,
@@ -21,12 +19,13 @@ public record ClientAudioSettings(
         boolean muted,
         boolean deafened,
         boolean hudEnabled,
-        boolean speakerHudEnabled,
-        boolean groupHudEnabled,
         boolean nameplateIconsEnabled,
-        HudAvatarAnchor hudAvatarAnchor,
         int hudIconSize,
-        DebugInfoLevel debugInfoLevel
+        DebugInfoLevel debugInfoLevel,
+        boolean debugRenderRays,
+        int groupMemberColor,
+        int outOfSightIndicatorMode,
+        int occludedIndicatorMode
 ) {
     public static ClientAudioSettings defaults() {
         return new ClientAudioSettings(
@@ -46,12 +45,13 @@ public record ClientAudioSettings(
                 false,
                 false,
                 true,
-                false,
-                false,
                 true,
-                HudAvatarAnchor.BOTTOM_RIGHT,
                 16,
-                DebugInfoLevel.OFF
+                DebugInfoLevel.OFF,
+                false,
+                0x55FF55,
+                2,
+                1
         );
     }
 
@@ -63,8 +63,7 @@ public record ClientAudioSettings(
         groupVoiceActivationThreshold = clampVolume(groupVoiceActivationThreshold);
         activationMode = activationMode == null ? VoiceActivationMode.PUSH_TO_TALK : activationMode;
         groupActivationMode = groupActivationMode == null ? VoiceActivationMode.PUSH_TO_TALK : groupActivationMode;
-        hudAvatarAnchor = hudAvatarAnchor == null ? HudAvatarAnchor.BOTTOM_RIGHT : hudAvatarAnchor;
-        hudIconSize = MineVoiceHudStyle.clampIconSize(hudIconSize);
+                hudIconSize = Math.max(12, Math.min(64, hudIconSize));
         debugInfoLevel = debugInfoLevel == null ? DebugInfoLevel.OFF : debugInfoLevel;
         voiceCodec = VoiceCodecFactory.normalizeCodecName(voiceCodec);
         audioPlaybackBackend = VoicePlaybackBackendFactory.normalizeBackendName(audioPlaybackBackend);
@@ -77,155 +76,113 @@ public record ClientAudioSettings(
     public ClientAudioSettings withMicrophoneDevice(String value) {
         return copy(value, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withOutputDevice(String value) {
         return copy(microphoneDevice, value, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withPushToTalkKey(String value) {
         return copy(microphoneDevice, outputDevice, value, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withMasterVolume(float value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, value, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withVoiceChatVolume(float value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, value, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withMicrophoneVolume(float value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, value,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withActivationMode(VoiceActivationMode value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 value, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withVoiceActivationThreshold(float value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, value, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withGroupActivationMode(VoiceActivationMode value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, value, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withGroupVoiceActivationThreshold(float value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, value,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withSpatialAudioEnabled(boolean value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                value, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                value, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withVoiceCodec(String value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, value, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, value, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withAudioPlaybackBackend(String value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, value, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, value, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withMuted(boolean value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, value, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, value, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withDeafened(boolean value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, value, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, value, hudEnabled, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withHudEnabled(boolean value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, value, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, value, nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
-
-    public ClientAudioSettings withSpeakerHudEnabled(boolean value) {
-        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
-                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, value, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
-    }
-
-    public ClientAudioSettings withGroupHudEnabled(boolean value) {
-        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
-                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, value,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, debugInfoLevel);
-    }
-
     public ClientAudioSettings withNameplateIconsEnabled(boolean value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                value, hudAvatarAnchor, hudIconSize, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, value, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
-
-    public ClientAudioSettings withHudAvatarAnchor(HudAvatarAnchor value) {
-        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
-                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, value, hudIconSize, debugInfoLevel);
-    }
-
     public ClientAudioSettings withHudIconSize(int value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, value, debugInfoLevel);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, value, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withDebugInfoLevel(DebugInfoLevel value) {
         return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
                 activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
-                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, speakerHudEnabled, groupHudEnabled,
-                nameplateIconsEnabled, hudAvatarAnchor, hudIconSize, value);
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled, nameplateIconsEnabled, hudIconSize, value, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
     }
 
     public ClientAudioSettings withShowDebugConnectionInfo(boolean value) {
@@ -233,56 +190,44 @@ public record ClientAudioSettings(
     }
 
     private static ClientAudioSettings copy(
-            String microphoneDevice,
-            String outputDevice,
-            String pushToTalkKey,
-            float masterVolume,
-            float voiceChatVolume,
-            float microphoneVolume,
-            VoiceActivationMode activationMode,
-            float voiceActivationThreshold,
-            VoiceActivationMode groupActivationMode,
-            float groupVoiceActivationThreshold,
-            boolean spatialAudioEnabled,
-            String voiceCodec,
-            String audioPlaybackBackend,
-            boolean muted,
-            boolean deafened,
-            boolean hudEnabled,
-            boolean speakerHudEnabled,
-            boolean groupHudEnabled,
-            boolean nameplateIconsEnabled,
-            HudAvatarAnchor hudAvatarAnchor,
-            int hudIconSize,
-            DebugInfoLevel debugInfoLevel
-    ) {
+            String microphoneDevice, String outputDevice, String pushToTalkKey, float masterVolume, float voiceChatVolume, float microphoneVolume,
+            VoiceActivationMode activationMode, float voiceActivationThreshold, VoiceActivationMode groupActivationMode, float groupVoiceActivationThreshold,
+            boolean spatialAudioEnabled, String voiceCodec, String audioPlaybackBackend, boolean muted, boolean deafened, boolean hudEnabled,
+            boolean nameplateIconsEnabled, int hudIconSize, DebugInfoLevel debugInfoLevel, boolean debugRenderRays, int groupMemberColor, int outOfSightIndicatorMode, int occludedIndicatorMode) {
         return new ClientAudioSettings(
-                microphoneDevice,
-                outputDevice,
-                pushToTalkKey,
-                masterVolume,
-                voiceChatVolume,
-                microphoneVolume,
-                activationMode,
-                voiceActivationThreshold,
-                groupActivationMode,
-                groupVoiceActivationThreshold,
-                spatialAudioEnabled,
-                voiceCodec,
-                audioPlaybackBackend,
-                muted,
-                deafened,
-                hudEnabled,
-                speakerHudEnabled,
-                groupHudEnabled,
-                nameplateIconsEnabled,
-                hudAvatarAnchor,
-                hudIconSize,
-                debugInfoLevel
+                microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
+                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled,
+                nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode
         );
     }
 
     private static float clampVolume(float value) {
         return Math.max(0.0F, Math.min(1.0F, value));
+    }
+
+    public ClientAudioSettings withDebugRenderRays(boolean value) {
+        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
+                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled,
+                nameplateIconsEnabled, hudIconSize, debugInfoLevel, value, groupMemberColor, outOfSightIndicatorMode, occludedIndicatorMode);
+    }
+    public ClientAudioSettings withGroupMemberColor(int value) {
+        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
+                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled,
+                nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, value, outOfSightIndicatorMode, occludedIndicatorMode);
+    }
+    public ClientAudioSettings withOutOfSightIndicatorMode(int value) {
+        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
+                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled,
+                nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, value, occludedIndicatorMode);
+    }
+    public ClientAudioSettings withOccludedIndicatorMode(int value) {
+        return copy(microphoneDevice, outputDevice, pushToTalkKey, masterVolume, voiceChatVolume, microphoneVolume,
+                activationMode, voiceActivationThreshold, groupActivationMode, groupVoiceActivationThreshold,
+                spatialAudioEnabled, voiceCodec, audioPlaybackBackend, muted, deafened, hudEnabled,
+                nameplateIconsEnabled, hudIconSize, debugInfoLevel, debugRenderRays, groupMemberColor, outOfSightIndicatorMode, value);
     }
 }

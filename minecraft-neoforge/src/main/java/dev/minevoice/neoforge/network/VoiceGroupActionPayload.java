@@ -11,7 +11,8 @@ public record VoiceGroupActionPayload(
         VoiceGroupAction action,
         UUID groupId,
         String groupName,
-        String password
+        String password,
+        int color
 ) implements CustomPacketPayload {
     public static final Type<VoiceGroupActionPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("minevoice", "voice_group_action")
@@ -35,11 +36,12 @@ public record VoiceGroupActionPayload(
         }
         buffer.writeUtf(payload.groupName() == null ? "" : payload.groupName(), 64);
         buffer.writeUtf(payload.password() == null ? "" : payload.password(), 128);
+        buffer.writeInt(payload.color());
     }
 
     private static VoiceGroupActionPayload decode(RegistryFriendlyByteBuf buffer) {
         VoiceGroupAction action = buffer.readEnum(VoiceGroupAction.class);
         UUID groupId = buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null;
-        return new VoiceGroupActionPayload(action, groupId, buffer.readUtf(64), buffer.readUtf(128));
+        return new VoiceGroupActionPayload(action, groupId, buffer.readUtf(64), buffer.readUtf(128), buffer.readInt());
     }
 }

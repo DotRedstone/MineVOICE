@@ -8,6 +8,7 @@ public record VoiceRosterEntry(
         UUID groupId,
         String groupName,
         boolean groupPasswordProtected,
-        boolean muted
+        boolean muted,
+        int groupColor
 ) {
 }

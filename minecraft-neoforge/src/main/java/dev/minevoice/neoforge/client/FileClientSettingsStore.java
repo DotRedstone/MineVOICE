@@ -59,12 +59,13 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
                 booleanProperty(properties, "muted", defaults.muted()),
                 booleanProperty(properties, "deafened", defaults.deafened()),
                 booleanProperty(properties, "hudEnabled", defaults.hudEnabled()),
-                booleanProperty(properties, "speakerHudEnabled", defaults.speakerHudEnabled()),
-                booleanProperty(properties, "groupHudEnabled", defaults.groupHudEnabled()),
                 booleanProperty(properties, "nameplateIconsEnabled", defaults.nameplateIconsEnabled()),
-                enumProperty(properties, "hudAvatarAnchor", HudAvatarAnchor.class, defaults.hudAvatarAnchor()),
                 intProperty(properties, "hudIconSize", defaults.hudIconSize()),
-                debugInfoLevel(properties, defaults.debugInfoLevel())
+                debugInfoLevel(properties, defaults.debugInfoLevel()),
+                booleanProperty(properties, "debugRenderRays", defaults.debugRenderRays()),
+                intProperty(properties, "groupMemberColor", defaults.groupMemberColor()),
+                intProperty(properties, "outOfSightIndicatorMode", defaults.outOfSightIndicatorMode()),
+                intProperty(properties, "occludedIndicatorMode", defaults.occludedIndicatorMode())
         );
     }
 
@@ -88,13 +89,14 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         properties.setProperty("muted", Boolean.toString(settings.muted()));
         properties.setProperty("deafened", Boolean.toString(settings.deafened()));
         properties.setProperty("hudEnabled", Boolean.toString(settings.hudEnabled()));
-        properties.setProperty("speakerHudEnabled", Boolean.toString(settings.speakerHudEnabled()));
-        properties.setProperty("groupHudEnabled", Boolean.toString(settings.groupHudEnabled()));
         properties.setProperty("nameplateIconsEnabled", Boolean.toString(settings.nameplateIconsEnabled()));
-        properties.setProperty("hudAvatarAnchor", settings.hudAvatarAnchor().name());
         properties.setProperty("hudIconSize", Integer.toString(settings.hudIconSize()));
         properties.setProperty("debugInfoLevel", settings.debugInfoLevel().name());
         properties.setProperty("showDebugConnectionInfo", Boolean.toString(settings.showDebugConnectionInfo()));
+        properties.setProperty("debugRenderRays", Boolean.toString(settings.debugRenderRays()));
+        properties.setProperty("groupMemberColor", String.valueOf(settings.groupMemberColor()));
+        properties.setProperty("outOfSightIndicatorMode", String.valueOf(settings.outOfSightIndicatorMode()));
+        properties.setProperty("occludedIndicatorMode", String.valueOf(settings.occludedIndicatorMode()));
 
         try {
             Files.createDirectories(path.getParent());

@@ -10,6 +10,7 @@ import dev.minevoice.common.protocol.VoicePacketType;
 import dev.minevoice.common.audio.VoiceCodecFactory;
 import dev.minevoice.neoforge.client.audio.JavaSoundVoiceAudioPipeline;
 import dev.minevoice.neoforge.client.audio.MinecraftVoiceSpatializer;
+import dev.minevoice.neoforge.client.audio.AcousticDebugSnapshot;
 import dev.minevoice.neoforge.client.audio.VoicePlaybackStats;
 import dev.minevoice.neoforge.client.audio.VoiceSpatialDebugSnapshot;
 import dev.minevoice.neoforge.network.VoiceServerInfoPayload;
@@ -134,6 +135,10 @@ public final class ClientVoiceConnectionManager {
 
     public VoiceSpatialDebugSnapshot spatialDebugSnapshot() {
         return spatializer.debugSnapshot();
+    }
+
+    public AcousticDebugSnapshot acousticDebugSnapshot() {
+        return spatializer.acousticDebugSnapshot();
     }
 
     public VoiceHudState hudState() {

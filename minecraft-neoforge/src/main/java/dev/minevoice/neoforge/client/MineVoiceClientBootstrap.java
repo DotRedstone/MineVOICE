@@ -29,6 +29,7 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderNameTagEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
@@ -82,6 +83,7 @@ public final class MineVoiceClientBootstrap {
         NeoForge.EVENT_BUS.addListener(MineVoiceClientBootstrap::onClientTick);
         NeoForge.EVENT_BUS.addListener(MineVoiceClientBootstrap::onRenderGui);
         NeoForge.EVENT_BUS.addListener(MineVoiceClientBootstrap::onRenderNameTag);
+        NeoForge.EVENT_BUS.addListener(MineVoiceClientBootstrap::onRenderLevelStage);
     }
 
     private static void registerKeyMappings(RegisterKeyMappingsEvent event) {
@@ -207,15 +209,27 @@ public final class MineVoiceClientBootstrap {
     }
 
     public static void createGroup(String groupName, String password) {
-        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.CREATE, null, groupName, password));
+        int color = SETTINGS_STORE.load().groupMemberColor();
+        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.CREATE, null, groupName, password, color));
     }
 
     public static void joinGroup(java.util.UUID groupId, String password) {
-        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.JOIN, groupId, "", password));
+        int color = SETTINGS_STORE.load().groupMemberColor();
+        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.JOIN, groupId, "", password, color));
     }
 
     public static void leaveGroup() {
-        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.LEAVE, null, "", ""));
+        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.LEAVE, null, "", "", 0));
+    }
+
+    public static void setGroupMemberColor(int color) {
+        ClientAudioSettings current = SETTINGS_STORE.load();
+        SETTINGS_STORE.save(current.withGroupMemberColor(color));
+        updateGroupColor(color);
+    }
+
+    public static void updateGroupColor(int color) {
+        sendGroupAction(new VoiceGroupActionPayload(VoiceGroupAction.UPDATE_COLOR, null, "", "", color));
     }
 
     public static float playerVolume(java.util.UUID playerId) {
@@ -271,6 +285,16 @@ public final class MineVoiceClientBootstrap {
         );
     }
 
+    private static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (!SETTINGS_STORE.load().debugRenderRays()) {
+            return;
+        }
+        dev.minevoice.neoforge.client.audio.MineVoiceAcousticDebugRenderer.render(
+                event,
+                VOICE_CONNECTION_MANAGER.acousticDebugSnapshot()
+        );
+    }
+
     private static void onRenderNameTag(RenderNameTagEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientAudioSettings settings = SETTINGS_STORE.load();
@@ -287,6 +311,8 @@ public final class MineVoiceClientBootstrap {
             renderNameplateIcon(event, icon);
         }
     }
+
+
 
     private static ResourceLocation nameplateStatusIcon(
             ClientAudioSettings settings,

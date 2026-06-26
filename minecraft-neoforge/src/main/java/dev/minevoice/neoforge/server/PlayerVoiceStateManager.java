@@ -9,6 +9,7 @@ public final class PlayerVoiceStateManager {
     private final Map<UUID, Boolean> connectedPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> mutedPlayers = new ConcurrentHashMap<>();
     private final Map<UUID, Set<UUID>> mutedPeers = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> groupColors = new ConcurrentHashMap<>();
 
     public void markConnected(UUID playerId) {
         connectedPlayers.put(playerId, true);
@@ -20,6 +21,7 @@ public final class PlayerVoiceStateManager {
         mutedPlayers.remove(playerId);
         mutedPeers.remove(playerId);
         mutedPeers.values().forEach(peers -> peers.remove(playerId));
+        groupColors.remove(playerId);
     }
 
     public boolean isConnected(UUID playerId) {
@@ -59,5 +61,15 @@ public final class PlayerVoiceStateManager {
     public Set<UUID> mutedPeers(UUID playerId) {
         Set<UUID> peers = mutedPeers.get(playerId);
         return peers == null ? Set.of() : Set.copyOf(peers);
+    }
+
+    public void setGroupColor(UUID playerId, int color) {
+        if (isConnected(playerId)) {
+            groupColors.put(playerId, color);
+        }
+    }
+
+    public int groupColor(UUID playerId) {
+        return groupColors.getOrDefault(playerId, 0x55FF55);
     }
 }

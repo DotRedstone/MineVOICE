@@ -2,10 +2,7 @@ package dev.minevoice.neoforge.client.ui;
 
 import dev.minevoice.neoforge.client.ClientAudioSettings;
 import dev.minevoice.neoforge.client.DebugInfoLevel;
-import dev.minevoice.neoforge.client.HudAvatarAnchor;
 import dev.minevoice.neoforge.client.VoiceActivationMode;
-import dev.minevoice.neoforge.client.hud.MineVoiceHudStyle;
-
 public final class MineVoiceSettingsScreenModel {
     private String microphoneDevice;
     private String outputDevice;
@@ -23,12 +20,13 @@ public final class MineVoiceSettingsScreenModel {
     private boolean muted;
     private boolean deafened;
     private boolean hudEnabled;
-    private boolean speakerHudEnabled;
-    private boolean groupHudEnabled;
     private boolean nameplateIconsEnabled;
-    private HudAvatarAnchor hudAvatarAnchor;
     private int hudIconSize;
     private DebugInfoLevel debugInfoLevel;
+    private boolean debugRenderRays;
+    private int groupMemberColor;
+    private int outOfSightIndicatorMode;
+    private int occludedIndicatorMode;
 
     private MineVoiceSettingsScreenModel(ClientAudioSettings settings) {
         microphoneDevice = settings.microphoneDevice();
@@ -47,12 +45,13 @@ public final class MineVoiceSettingsScreenModel {
         muted = settings.muted();
         deafened = settings.deafened();
         hudEnabled = settings.hudEnabled();
-        speakerHudEnabled = settings.speakerHudEnabled();
-        groupHudEnabled = settings.groupHudEnabled();
         nameplateIconsEnabled = settings.nameplateIconsEnabled();
-        hudAvatarAnchor = settings.hudAvatarAnchor();
         hudIconSize = settings.hudIconSize();
         debugInfoLevel = settings.debugInfoLevel();
+        debugRenderRays = settings.debugRenderRays();
+        groupMemberColor = settings.groupMemberColor();
+        outOfSightIndicatorMode = settings.outOfSightIndicatorMode();
+        occludedIndicatorMode = settings.occludedIndicatorMode();
     }
 
     public static MineVoiceSettingsScreenModel from(ClientAudioSettings settings) {
@@ -77,12 +76,13 @@ public final class MineVoiceSettingsScreenModel {
                 muted,
                 deafened,
                 hudEnabled,
-                speakerHudEnabled,
-                groupHudEnabled,
                 nameplateIconsEnabled,
-                hudAvatarAnchor,
                 hudIconSize,
-                debugInfoLevel
+                debugInfoLevel,
+                debugRenderRays,
+                groupMemberColor,
+                outOfSightIndicatorMode,
+                occludedIndicatorMode
         );
     }
 
@@ -104,12 +104,13 @@ public final class MineVoiceSettingsScreenModel {
         muted = defaults.muted;
         deafened = defaults.deafened;
         hudEnabled = defaults.hudEnabled;
-        speakerHudEnabled = defaults.speakerHudEnabled;
-        groupHudEnabled = defaults.groupHudEnabled;
-        nameplateIconsEnabled = defaults.nameplateIconsEnabled;
-        hudAvatarAnchor = defaults.hudAvatarAnchor;
-        hudIconSize = defaults.hudIconSize;
-        debugInfoLevel = defaults.debugInfoLevel;
+        nameplateIconsEnabled = defaults.nameplateIconsEnabled();
+        hudIconSize = defaults.hudIconSize();
+        debugInfoLevel = defaults.debugInfoLevel();
+        debugRenderRays = defaults.debugRenderRays();
+        groupMemberColor = defaults.groupMemberColor();
+        outOfSightIndicatorMode = defaults.outOfSightIndicatorMode();
+        occludedIndicatorMode = defaults.occludedIndicatorMode();
     }
 
     public String titleKey() {
@@ -235,45 +236,18 @@ public final class MineVoiceSettingsScreenModel {
     public void setHudEnabled(boolean hudEnabled) {
         this.hudEnabled = hudEnabled;
     }
-
-    public boolean speakerHudEnabled() {
-        return speakerHudEnabled;
-    }
-
-    public void setSpeakerHudEnabled(boolean speakerHudEnabled) {
-        this.speakerHudEnabled = speakerHudEnabled;
-    }
-
-    public boolean groupHudEnabled() {
-        return groupHudEnabled;
-    }
-
-    public void setGroupHudEnabled(boolean groupHudEnabled) {
-        this.groupHudEnabled = groupHudEnabled;
-    }
-
-    public boolean nameplateIconsEnabled() {
+public boolean nameplateIconsEnabled() {
         return nameplateIconsEnabled;
     }
 
     public void setNameplateIconsEnabled(boolean nameplateIconsEnabled) {
         this.nameplateIconsEnabled = nameplateIconsEnabled;
     }
-
-    public HudAvatarAnchor hudAvatarAnchor() {
-        return hudAvatarAnchor;
-    }
-
-    public void setHudAvatarAnchor(HudAvatarAnchor hudAvatarAnchor) {
-        this.hudAvatarAnchor = hudAvatarAnchor;
-    }
-
-    public int hudIconSize() {
+public int hudIconSize() {
         return hudIconSize;
     }
 
-    public void setHudIconSize(int hudIconSize) {
-        this.hudIconSize = MineVoiceHudStyle.clampIconSize(hudIconSize);
+    public void setHudIconSize(int hudIconSize) {        this.hudIconSize = Math.max(12, Math.min(64, hudIconSize));
     }
 
     public DebugInfoLevel debugInfoLevel() {
@@ -287,4 +261,13 @@ public final class MineVoiceSettingsScreenModel {
     private static float clampVolume(float value) {
         return Math.max(0.0F, Math.min(1.0F, value));
     }
+
+    public boolean debugRenderRays() { return debugRenderRays; }
+    public void setDebugRenderRays(boolean val) { this.debugRenderRays = val; }
+    public int groupMemberColor() { return groupMemberColor; }
+    public void setGroupMemberColor(int val) { this.groupMemberColor = val; }
+    public int outOfSightIndicatorMode() { return outOfSightIndicatorMode; }
+    public void setOutOfSightIndicatorMode(int val) { this.outOfSightIndicatorMode = val; }
+    public int occludedIndicatorMode() { return occludedIndicatorMode; }
+    public void setOccludedIndicatorMode(int val) { this.occludedIndicatorMode = val; }
 }

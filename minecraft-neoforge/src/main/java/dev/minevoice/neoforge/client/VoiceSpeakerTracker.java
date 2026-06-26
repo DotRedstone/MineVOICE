@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class VoiceSpeakerTracker {
-    private static final long SPEAKING_TIMEOUT_MILLIS = 900L;
+    private static final long SPEAKING_TIMEOUT_MILLIS = 300L;
     private final Map<UUID, Long> lastHeardAt = new LinkedHashMap<>();
 
     public synchronized void markSpeaking(UUID playerId) {
