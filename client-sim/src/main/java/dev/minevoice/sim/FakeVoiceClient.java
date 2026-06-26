@@ -3,6 +3,9 @@ package dev.minevoice.sim;
 import dev.minevoice.common.auth.AuthToken;
 import dev.minevoice.common.auth.AuthTokenCodec;
 import dev.minevoice.common.auth.HmacAuthTokenIssuer;
+import dev.minevoice.common.auth.SessionKeyDeriver;
+import dev.minevoice.common.auth.AesGcmCipher;
+
 import dev.minevoice.common.network.BandwidthCounter;
 import dev.minevoice.common.protocol.BinaryVoicePacketCodec;
 import dev.minevoice.common.protocol.VoiceFrame;
@@ -37,6 +40,7 @@ public final class FakeVoiceClient implements AutoCloseable {
     private final AtomicLong voicePayloadBytesSent = new AtomicLong();
     private final AtomicLong voicePayloadBytesReceived = new AtomicLong();
     private long sequence;
+    private byte[] sessionKey;
 
     public FakeVoiceClient(UUID playerId, VoiceEndpoint endpoint) {
         this.playerId = playerId;
@@ -52,6 +56,7 @@ public final class FakeVoiceClient implements AutoCloseable {
     public boolean connect(String sharedSecret) {
         HmacAuthTokenIssuer issuer = new HmacAuthTokenIssuer(sharedSecret);
         AuthToken token = issuer.issue(playerId, "client-sim", Duration.ofMinutes(5));
+        this.sessionKey = SessionKeyDeriver.derive(sharedSecret, token);
         System.out.println("fake client connecting to " + endpoint.host() + ":" + endpoint.port() + " player=" + playerId);
         send(VoicePacketType.HELLO, new byte[0]);
         receive();
@@ -76,7 +81,11 @@ public final class FakeVoiceClient implements AutoCloseable {
     }
 
     public void sendFrame(VoiceFrame frame) {
-        send(VoicePacketType.VOICE_FRAME, VoiceFramePayloadCodec.encode(frame));
+        byte[] payload = VoiceFramePayloadCodec.encode(frame);
+        if (sessionKey != null) {
+            payload = AesGcmCipher.encrypt(sessionKey, payload);
+        }
+        send(VoicePacketType.VOICE_FRAME, payload);
         voiceFramesSent.incrementAndGet();
         voicePayloadBytesSent.addAndGet(frame.encodedAudio().length);
         recordVoiceFrame(receive());
@@ -188,7 +197,20 @@ public final class FakeVoiceClient implements AutoCloseable {
         if (packet == null || packet.packetType() != VoicePacketType.VOICE_FRAME || packet.payload().length == 0) {
             return false;
         }
-        VoiceFrame frame = VoiceFramePayloadCodec.decode(packet.payload());
+        byte[] payload = packet.payload();
+        if (sessionKey != null) {
+            try {
+                payload = AesGcmCipher.decrypt(sessionKey, payload);
+            } catch (RuntimeException e) {
+                return false;
+            }
+        }
+        VoiceFrame frame;
+        try {
+            frame = VoiceFramePayloadCodec.decode(payload);
+        } catch (Exception e) {
+            return false;
+        }
         voiceFramesReceived.incrementAndGet();
         voicePayloadBytesReceived.addAndGet(frame.encodedAudio().length);
         return true;
