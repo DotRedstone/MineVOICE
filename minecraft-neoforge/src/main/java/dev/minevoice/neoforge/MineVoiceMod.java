@@ -21,6 +21,8 @@ import dev.minevoice.neoforge.network.VoiceRosterPayload;
 import dev.minevoice.neoforge.network.VoiceServerInfoPayload;
 import dev.minevoice.common.auth.AuthToken;
 import dev.minevoice.common.auth.AuthTokenCodec;
+import dev.minevoice.common.auth.SessionKeyDeriver;
+
 import dev.minevoice.common.config.VoiceMode;
 import dev.minevoice.common.protocol.VoiceProtocolVersion;
 import net.minecraft.commands.CommandSourceStack;
@@ -277,13 +279,15 @@ public final class MineVoiceMod {
             LOGGER.info("MineVOICE local voice endpoint advertised as {}:{}", host, port);
         }
 
+        byte[] sessionKey = SessionKeyDeriver.derive(config.sharedSecret(), token);
         voiceServerInfoSender.sendToPlayer(player, new VoiceServerInfoPayload(
                 config.mode(),
                 host,
                 port,
                 AuthTokenCodec.encodeToString(token),
                 VoiceProtocolVersion.CURRENT,
-                config.voiceCodec()
+                config.voiceCodec(),
+                sessionKey
         ));
     }
 
