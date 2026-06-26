@@ -44,12 +44,12 @@
 - [x] **OpenAL backend 抽象**：已补 `VoicePlaybackBackend`、`JavaSoundVoicePlaybackBackend`、`OpenAlVoicePlaybackBackend`、listener/source provider；当前默认仍使用 Java Sound。
 - [x] **OpenAL per-speaker source**：`audioPlaybackBackend=openal` 时使用独立 OpenAL context，每个说话者独立 source，source 跟随玩家位置，listener 跟随相机位置和朝向；默认仍是 Java Sound。
 - [x] **OpenAL 资源释放**：玩家离开、断开、停止说话、关闭世界时释放 source/buffer/context/device，OpenAL 初始化或写入失败会回退 Java Sound。
-- [x] **基础遮挡和低通**：客户端按 listener/speaker 视线采样碰撞方块，被遮挡时降低音量并对 PCM 做轻量低通。
+- [x] **基础遮挡和低通 (待实机验收)**：客户端按 listener/speaker 视线采样碰撞方块，被遮挡时降低音量并对 PCM 做轻量低通。
 - [x] **遮挡性能保护**：遮挡采样只在客户端 tick 的玩家位置刷新中进行，播放线程复用快照结果，不在音频线程扫方块。
-- [x] **Sound Physics optional compat skeleton**：只检测安装和预留 backend，不引入硬依赖，不调用不稳定内部 API。
-- [x] **可配置声学材质表**：新增 `config/minevoice-acoustics.properties`，按材质配置直达传输、高频保留、反射率，并支持按方块 ID 覆盖分类。
-- [x] **一阶反射和环境混响快照**：客户端以预算受控的探针生成虚拟反射方向、环境混响增益和衰减时间；播放线程只消费快照。
-- [x] **OpenAL EFX 空间路径**：`audioPlaybackBackend=openal` 时按说话者设置直达声低通和 auxiliary reverb send；不支持 EFX 时保留普通 OpenAL source，异常时回退 Java Sound。
+- [x] **Sound Physics optional compat skeleton (待实机验收)**：只检测安装和预留 backend，不引入硬依赖，不调用不稳定内部 API。
+- [x] **可配置声学材质表 (待实机验收)**：新增 `config/minevoice-acoustics.properties`，按材质配置直达传输、高频保留、反射率，并支持按方块 ID 覆盖分类。
+- [x] **一阶反射和环境混响快照 (待实机验收)**：客户端以预算受控的探针生成虚拟反射方向、环境混响增益和衰减时间；播放线程只消费快照。
+- [x] **OpenAL EFX 空间路径 (待实机验收)**：`audioPlaybackBackend=openal` 时按说话者设置直达声低通和 auxiliary reverb send；不支持 EFX 时保留普通 OpenAL source，异常时回退 Java Sound。
 - [x] **声学路径可视化**：`debugRenderRays=true` 时在世界内绘制环境探针、直达路径和一阶反射路径，渲染只读取客户端 tick 快照。
 - [ ] **材质空间音效实机验收**：用石头、木头、玻璃、羊毛墙和室内/洞穴/露天环境验证直达声、反射和 EFX 回退，步骤见 `docs/manual-regression-checklist.md`。
 
