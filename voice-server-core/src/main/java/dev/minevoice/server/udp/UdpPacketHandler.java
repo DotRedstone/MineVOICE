@@ -2,6 +2,9 @@ package dev.minevoice.server.udp;
 
 import dev.minevoice.common.auth.AuthToken;
 import dev.minevoice.common.auth.AuthTokenCodec;
+import dev.minevoice.common.auth.SessionKeyDeriver;
+import dev.minevoice.common.auth.AesGcmCipher;
+
 import dev.minevoice.common.auth.AuthTokenValidator;
 import dev.minevoice.common.auth.TokenValidationResult;
 import dev.minevoice.common.network.BandwidthCounter;
@@ -39,6 +42,49 @@ public final class UdpPacketHandler {
     private final BandwidthCounter bandwidthCounter;
     private final String sharedSecret;
 
+    // Rate limiting per IP
+    private final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> rateLimits = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static class TokenBucket {
+        private final int capacity;
+        private final double refillRatePerMs;
+        private double tokens;
+        private long lastRefillTime;
+        private long lastLogTime;
+
+        TokenBucket(int capacity, int tokensPerSecond) {
+            this.capacity = capacity;
+            this.refillRatePerMs = tokensPerSecond / 1000.0;
+            this.tokens = capacity;
+            this.lastRefillTime = System.currentTimeMillis();
+            this.lastLogTime = 0;
+        }
+
+        synchronized boolean tryConsume(int count) {
+            long now = System.currentTimeMillis();
+            double delta = (now - lastRefillTime) * refillRatePerMs;
+            if (delta > 0) {
+                tokens = Math.min(capacity, tokens + delta);
+                lastRefillTime = now;
+            }
+            if (tokens >= count) {
+                tokens -= count;
+                return true;
+            }
+            return false;
+        }
+
+        synchronized boolean shouldLog(long cooldownMs) {
+            long now = System.currentTimeMillis();
+            if (now - lastLogTime >= cooldownMs) {
+                lastLogTime = now;
+                return true;
+            }
+            return false;
+        }
+    }
+
+
     public UdpPacketHandler(
             MineVoiceLogger logger,
             AuthTokenValidator tokenValidator,
@@ -56,6 +102,16 @@ public final class UdpPacketHandler {
     }
 
     public void handle(DatagramSocket socket, DatagramPacket packet) {
+        String clientIp = packet.getAddress().getHostAddress();
+        TokenBucket bucket = rateLimits.computeIfAbsent(clientIp, k -> new TokenBucket(150, 150));
+        
+        if (!bucket.tryConsume(1)) {
+            if (bucket.shouldLog(5000)) {
+                logger.debug("Rate limit exceeded for IP: " + clientIp + " (logs throttled for 5s)");
+            }
+            return;
+        }
+
         sessionRegistry.removeExpired(Duration.ofMinutes(10));
         bandwidthCounter.recordReceived(packet.getLength());
         logger.debug("received UDP packet bytes=" + packet.getLength() + " from=" + packet.getSocketAddress());
