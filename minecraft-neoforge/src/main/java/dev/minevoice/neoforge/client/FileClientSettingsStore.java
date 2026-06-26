@@ -65,7 +65,8 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
                 booleanProperty(properties, "debugRenderRays", defaults.debugRenderRays()),
                 intProperty(properties, "groupMemberColor", defaults.groupMemberColor()),
                 intProperty(properties, "outOfSightIndicatorMode", defaults.outOfSightIndicatorMode()),
-                intProperty(properties, "occludedIndicatorMode", defaults.occludedIndicatorMode())
+                intProperty(properties, "occludedIndicatorMode", defaults.occludedIndicatorMode()),
+                booleanProperty(properties, "hrtfEnabled", defaults.hrtfEnabled())
         );
     }
 
@@ -97,6 +98,9 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         properties.setProperty("groupMemberColor", String.valueOf(settings.groupMemberColor()));
         properties.setProperty("outOfSightIndicatorMode", String.valueOf(settings.outOfSightIndicatorMode()));
         properties.setProperty("occludedIndicatorMode", String.valueOf(settings.occludedIndicatorMode()));
+        properties.setProperty("hrtfEnabled", Boolean.toString(settings.hrtfEnabled()));
+        properties.setProperty("hrtfEnabled", Boolean.toString(settings.hrtfEnabled()));
+        properties.setProperty("hrtfEnabled", Boolean.toString(settings.hrtfEnabled()));
 
         try {
             Files.createDirectories(path.getParent());

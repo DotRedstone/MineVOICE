@@ -1,14 +1,14 @@
-package dev.minevoice.standalone.auth;
+package dev.minevoice.server.auth;
 
 import dev.minevoice.common.auth.AuthToken;
 import dev.minevoice.common.auth.AuthTokenValidator;
 import dev.minevoice.common.auth.HmacAuthTokenValidator;
 import dev.minevoice.common.auth.TokenValidationResult;
 
-public final class StandaloneTokenValidator implements AuthTokenValidator {
+public final class CoreTokenValidator implements AuthTokenValidator {
     private final HmacAuthTokenValidator validator;
 
-    public StandaloneTokenValidator(String sharedSecret) {
+    public CoreTokenValidator(String sharedSecret) {
         this.validator = new HmacAuthTokenValidator(sharedSecret);
     }
 

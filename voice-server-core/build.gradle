@@ -1,0 +1,11 @@
+plugins {
+    id "java-library"
+}
+
+dependencies {
+    api project(":common")
+}
+
+base {
+    archivesName = "minevoice-server-core"
+}

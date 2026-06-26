@@ -2,6 +2,8 @@ package dev.minevoice.neoforge.client;
 
 import dev.minevoice.common.protocol.BinaryVoicePacketCodec;
 import dev.minevoice.common.auth.AuthTokenCodec;
+import dev.minevoice.common.auth.AesGcmCipher;
+
 import dev.minevoice.common.protocol.VoiceFrame;
 import dev.minevoice.common.protocol.VoiceFramePayloadCodec;
 import dev.minevoice.common.protocol.VoicePacket;
@@ -56,6 +58,7 @@ public final class ClientVoiceConnectionManager {
     private volatile long connectedAtMillis;
     private Thread receiveThread;
     private volatile JavaSoundVoiceAudioPipeline audioPipeline;
+    private byte[] sessionKey;
 
     public ClientVoiceConnectionManager(
             ClientSettingsStore settingsStore,
@@ -79,6 +82,7 @@ public final class ClientVoiceConnectionManager {
             protocolVersion = payload.protocolVersion();
             serverVoiceCodec = VoiceCodecFactory.normalizeCodecName(payload.voiceCodec());
             playerId = AuthTokenCodec.decodeFromString(payload.token()).playerUuid();
+            sessionKey = payload.sessionKey();
             send(VoicePacketType.HELLO, new byte[0]);
             receive();
             send(VoicePacketType.AUTH, payload.token().getBytes(StandardCharsets.UTF_8));
@@ -205,6 +209,9 @@ public final class ClientVoiceConnectionManager {
     private void sendFrame(VoiceFrame frame) {
         try {
             byte[] payload = VoiceFramePayloadCodec.encode(frame);
+            if (sessionKey != null && sessionKey.length == 16) {
+                payload = AesGcmCipher.encrypt(sessionKey, payload);
+            }
             send(VoicePacketType.VOICE_FRAME, payload);
             voiceFramesSent.incrementAndGet();
             voicePayloadBytesSent.addAndGet(frame.encodedAudio().length);
@@ -222,7 +229,15 @@ public final class ClientVoiceConnectionManager {
                 }
                 JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
                 if (packet.packetType() == VoicePacketType.VOICE_FRAME && pipeline != null && packet.payload().length > 0) {
-                    VoiceFrame frame = VoiceFramePayloadCodec.decode(packet.payload());
+                    byte[] payload = packet.payload();
+                    if (sessionKey != null && sessionKey.length == 16) {
+                        try {
+                            payload = AesGcmCipher.decrypt(sessionKey, payload);
+                        } catch (RuntimeException e) {
+                            continue;
+                        }
+                    }
+                    VoiceFrame frame = VoiceFramePayloadCodec.decode(payload);
                     voiceFramesReceived.incrementAndGet();
                     voicePayloadBytesReceived.addAndGet(frame.encodedAudio().length);
                     speakerTracker.markSpeaking(frame.senderPlayerId());
