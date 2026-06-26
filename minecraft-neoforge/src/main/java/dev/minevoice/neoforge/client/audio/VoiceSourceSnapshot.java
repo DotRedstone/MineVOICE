@@ -7,10 +7,16 @@ public record VoiceSourceSnapshot(
         double x,
         double y,
         double z,
+        float yaw,
+        float pitch,
         boolean known,
-        boolean occluded
+        boolean occluded,
+        float directGain,
+        float highFrequencyGain,
+        float reflectionGain,
+        int reflectionProbeCount
 ) {
     public static VoiceSourceSnapshot unknown(UUID speakerId) {
-        return new VoiceSourceSnapshot(speakerId, 0.0D, 0.0D, 0.0D, false, false);
+        return new VoiceSourceSnapshot(speakerId, 0.0D, 0.0D, 0.0D, 0.0F, 0.0F, false, false, 1.0F, 1.0F, 0.0F, 0);
     }
 }

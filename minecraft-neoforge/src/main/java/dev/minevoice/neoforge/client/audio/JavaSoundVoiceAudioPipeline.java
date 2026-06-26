@@ -1,5 +1,6 @@
 package dev.minevoice.neoforge.client.audio;
 
+import com.mojang.logging.LogUtils;
 import dev.minevoice.common.audio.AudioCaptureProcessingRequest;
 import dev.minevoice.common.audio.AudioCaptureProcessor;
 import dev.minevoice.common.audio.JitterBuffer;
@@ -35,8 +36,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 public final class JavaSoundVoiceAudioPipeline {
+    private static final Logger LOGGER = LogUtils.getLogger();
     public static final AudioFormat CAPTURE_FORMAT = new AudioFormat(48_000.0F, 16, 1, true, false);
     public static final AudioFormat PLAYBACK_FORMAT = new AudioFormat(48_000.0F, 16, 2, true, false);
     private static final int FRAME_BYTES = 1_920;
@@ -139,27 +142,41 @@ public final class JavaSoundVoiceAudioPipeline {
                 activeCaptureLine = line;
                 line.start();
                 byte[] pcm = new byte[FRAME_BYTES];
+                java.util.ArrayDeque<byte[]> preRecordBuffer = new java.util.ArrayDeque<>(10);
                 while (running.get() && sameCaptureDevice(settings, lineInfo, lineSignature)) {
                     int read = line.read(pcm, 0, pcm.length);
+                    if (read > 0) {
+                        applyVolume(pcm, read, settings.microphoneVolume());
+                    }
                     float microphoneLevel = read <= 0 ? 0.0F : peakLevel(pcm, read);
                     List<VoiceChannel> channels = read > 0 ? transmitChannels(settings, microphoneLevel) : List.of();
                     boolean transmitting = !channels.isEmpty();
                     activityListener.onActivity(microphoneLevel, transmitting);
+                    
                     if (!transmitting) {
+                        if (read > 0) {
+                            preRecordBuffer.addLast(Arrays.copyOf(pcm, read));
+                            if (preRecordBuffer.size() > 10) {
+                                preRecordBuffer.removeFirst();
+                            }
+                        }
                         continue;
                     }
-                    byte[] framePcm = Arrays.copyOf(pcm, read);
-                    applyVolume(framePcm, settings.microphoneVolume());
-                    long timestamp = System.currentTimeMillis();
-                    framePcm = captureProcessor.process(new AudioCaptureProcessingRequest(
-                            framePcm,
-                            CAPTURE_VOICE_FORMAT,
-                            microphoneLevel,
-                            timestamp
-                    ));
-                    byte[] encoded = codec.encode(framePcm);
-                    for (VoiceChannel channel : channels) {
-                        frameSender.accept(new VoiceFrame(playerId, ++sequence, timestamp, encoded, 48_000, 1, channel));
+                    
+                    preRecordBuffer.addLast(Arrays.copyOf(pcm, read));
+                    while (!preRecordBuffer.isEmpty()) {
+                        byte[] framePcm = preRecordBuffer.removeFirst();
+                        long timestamp = System.currentTimeMillis();
+                        framePcm = captureProcessor.process(new AudioCaptureProcessingRequest(
+                                framePcm,
+                                CAPTURE_VOICE_FORMAT,
+                                microphoneLevel,
+                                timestamp
+                        ));
+                        byte[] encoded = codec.encode(framePcm);
+                        for (VoiceChannel channel : channels) {
+                            frameSender.accept(new VoiceFrame(playerId, ++sequence, timestamp, encoded, 48_000, 1, channel));
+                        }
                     }
                 }
             } catch (RuntimeException exception) {
@@ -207,8 +224,7 @@ public final class JavaSoundVoiceAudioPipeline {
                     long now = System.nanoTime();
                     long waitNanos = nextMixAt - now;
                     if (waitNanos > 0L) {
-                        TimeUnit.NANOSECONDS.sleep(waitNanos);
-                        continue;
+                        java.util.concurrent.locks.LockSupport.parkNanos(waitNanos);
                     }
                     if (backend.supportsSourcePlayback()) {
                         playSourceFrames(sourceFrames, current, backend);
@@ -220,15 +236,13 @@ public final class JavaSoundVoiceAudioPipeline {
                     }
                     updatePlaybackStats(sourceFrames, backend.backendName());
                     nextMixAt += FRAME_DURATION_NANOS;
-                    if (nextMixAt < now - FRAME_DURATION_NANOS) {
-                        nextMixAt = now;
-                    }
                 }
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
             } catch (RuntimeException exception) {
                 if (OpenAlVoicePlaybackBackend.NAME.equals(requestedBackend)) {
                     forceJavaSoundPlayback = true;
+                    LOGGER.warn("MineVOICE OpenAL playback failed; falling back to Java Sound", exception);
                 }
                 sleepQuietly(1_000L);
             } finally {
@@ -295,8 +309,11 @@ public final class JavaSoundVoiceAudioPipeline {
             VoiceActivityGate activityGate
     ) {
         if (activationMode == VoiceActivationMode.PUSH_TO_TALK) {
-            activityGate.reset();
-            return pushToTalkDown;
+            if (!pushToTalkDown) {
+                activityGate.reset();
+                return false;
+            }
+            return activityGate.update(microphoneLevel, 0.01f);
         }
         return activityGate.update(microphoneLevel, threshold);
     }
@@ -310,9 +327,12 @@ public final class JavaSoundVoiceAudioPipeline {
         return peak / 32768.0F;
     }
 
-    private static void applyVolume(byte[] pcm, float volume) {
-        float clamped = Math.max(0.0F, Math.min(1.0F, volume));
-        for (int index = 0; index + 1 < pcm.length; index += 2) {
+    private static void applyVolume(byte[] pcm, int length, float volume) {
+        float clamped = Math.max(0.0F, Math.min(2.0F, volume));
+        if (clamped == 1.0F) {
+            return;
+        }
+        for (int index = 0; index + 1 < length; index += 2) {
             int sample = (pcm[index + 1] << 8) | (pcm[index] & 0xFF);
             int scaled = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, Math.round(sample * clamped)));
             pcm[index] = (byte) (scaled & 0xFF);
@@ -376,12 +396,16 @@ public final class JavaSoundVoiceAudioPipeline {
         int[] right = new int[SAMPLES_PER_FRAME];
         boolean mixedAudio = false;
         float volume = clampVolume(settings.masterVolume() * settings.voiceChatVolume());
+        VoiceSpatialSceneProvider sceneProvider = spatializer instanceof VoiceSpatialSceneProvider provider ? provider : null;
         Iterator<Map.Entry<UUID, SourcePlaybackState>> iterator = sourceFrames.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<UUID, SourcePlaybackState> entry = iterator.next();
             SourcePlaybackState source = entry.getValue();
             VoiceFrame frame = source.jitterBuffer().pollReady();
-            if (frame == null && !source.jitterBuffer().hasBufferedFrames()) {
+            if (frame != null) {
+                source.markActive();
+            }
+            if (frame == null && !source.jitterBuffer().hasBufferedFrames() && System.currentTimeMillis() - source.lastActivity() > 1000L) {
                 iterator.remove();
             }
             if (frame == null || frame.channels() != 1) {
@@ -391,6 +415,9 @@ public final class JavaSoundVoiceAudioPipeline {
                 continue;
             }
 
+            VoiceSourceSnapshot sourceSnapshot = sceneProvider == null || !settings.spatialAudioEnabled()
+                    ? VoiceSourceSnapshot.unknown(frame.senderPlayerId())
+                    : sceneProvider.sourceSnapshot(frame.senderPlayerId());
             StereoGains gains = settings.spatialAudioEnabled()
                     ? spatializer.gainsFor(frame.senderPlayerId(), frame.channel())
                     : StereoGains.CENTER;
@@ -401,11 +428,7 @@ public final class JavaSoundVoiceAudioPipeline {
                 continue;
             }
             byte[] pcm = source.decoder().decode(frame.encodedAudio());
-            if (spatializer.occluded(frame.senderPlayerId(), frame.channel())) {
-                applyLowPass(pcm, source.lowPassState());
-            } else {
-                source.lowPassState().reset();
-            }
+            applyLowPass(pcm, source.lowPassState(), sourceSnapshot.highFrequencyGain());
             int sampleCount = Math.min(SAMPLES_PER_FRAME, pcm.length / Short.BYTES);
             for (int index = 0; index < sampleCount; index++) {
                 int offset = index * Short.BYTES;
@@ -441,44 +464,44 @@ public final class JavaSoundVoiceAudioPipeline {
         while (iterator.hasNext()) {
             Map.Entry<UUID, SourcePlaybackState> entry = iterator.next();
             SourcePlaybackState source = entry.getValue();
-            VoiceFrame frame = source.jitterBuffer().pollReady();
-            if (frame == null && !source.jitterBuffer().hasBufferedFrames()) {
+            VoiceFrame frame;
+            boolean hasFrames = false;
+            while ((frame = source.jitterBuffer().pollReady()) != null) {
+                source.markActive();
+                hasFrames = true;
+                if (frame.channels() != 1) {
+                    continue;
+                }
+                if (Boolean.TRUE.equals(playerMutedSupplier.apply(frame.senderPlayerId()))) {
+                    continue;
+                }
+
+                VoiceSourceSnapshot sourceSnapshot = sceneProvider == null || !settings.spatialAudioEnabled()
+                        ? VoiceSourceSnapshot.unknown(frame.senderPlayerId())
+                        : sceneProvider.sourceSnapshot(frame.senderPlayerId());
+                float spatialGain = 1.0F;
+                if (settings.spatialAudioEnabled() && frame.channel() == VoiceChannel.PROXIMITY) {
+                    spatializer.gainsFor(frame.senderPlayerId(), frame.channel());
+                    spatialGain = sourceSnapshot.directGain();
+                }
+                float playerVolume = clampPlayerVolume(playerVolumeSupplier.apply(frame.senderPlayerId()));
+                float gain = volume * playerVolume * spatialGain;
+                if (gain <= 0.0F) {
+                    continue;
+                }
+                byte[] pcm = source.decoder().decode(frame.encodedAudio());
+                backend.writeSourceFrame(
+                        frame.senderPlayerId(),
+                        frame.channel(),
+                        sourceSnapshot,
+                        pcm,
+                        frame.sampleRate(),
+                        gain
+                );
+            }
+            if (!hasFrames && !source.jitterBuffer().hasBufferedFrames() && System.currentTimeMillis() - source.lastActivity() > 1000L) {
                 iterator.remove();
             }
-            if (frame == null || frame.channels() != 1) {
-                continue;
-            }
-            if (Boolean.TRUE.equals(playerMutedSupplier.apply(frame.senderPlayerId()))) {
-                continue;
-            }
-
-            float spatialGain = 1.0F;
-            if (settings.spatialAudioEnabled()) {
-                StereoGains gains = spatializer.gainsFor(frame.senderPlayerId(), frame.channel());
-                spatialGain = Math.max(gains.left(), gains.right());
-            }
-            float playerVolume = clampPlayerVolume(playerVolumeSupplier.apply(frame.senderPlayerId()));
-            float gain = volume * playerVolume * spatialGain;
-            if (gain <= 0.0F) {
-                continue;
-            }
-            byte[] pcm = source.decoder().decode(frame.encodedAudio());
-            if (spatializer.occluded(frame.senderPlayerId(), frame.channel())) {
-                applyLowPass(pcm, source.lowPassState());
-            } else {
-                source.lowPassState().reset();
-            }
-            VoiceSourceSnapshot sourceSnapshot = sceneProvider == null || !settings.spatialAudioEnabled()
-                    ? VoiceSourceSnapshot.unknown(frame.senderPlayerId())
-                    : sceneProvider.sourceSnapshot(frame.senderPlayerId());
-            backend.writeSourceFrame(
-                    frame.senderPlayerId(),
-                    frame.channel(),
-                    sourceSnapshot,
-                    pcm,
-                    frame.sampleRate(),
-                    gain
-            );
         }
         Set<UUID> retainedSources = new HashSet<>(sourceFrames.keySet());
         backend.retainSources(retainedSources);
@@ -501,11 +524,13 @@ public final class JavaSoundVoiceAudioPipeline {
         target[offset + 1] = (byte) ((clamped >>> 8) & 0xFF);
     }
 
-    private static void applyLowPass(byte[] pcm, LowPassState state) {
+    private static void applyLowPass(byte[] pcm, LowPassState state, float highFrequencyGain) {
+        float clampedHighFrequency = Math.max(0.02F, Math.min(1.0F, highFrequencyGain));
+        float smoothing = 0.08F + 0.84F * clampedHighFrequency;
         float previous = state.previousSample();
         for (int index = 0; index + 1 < pcm.length; index += 2) {
             int sample = (pcm[index + 1] << 8) | (pcm[index] & 0xFF);
-            float filtered = previous + 0.22F * (sample - previous);
+            float filtered = previous + smoothing * (sample - previous);
             int clamped = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, Math.round(filtered)));
             pcm[index] = (byte) (clamped & 0xFF);
             pcm[index + 1] = (byte) ((clamped >>> 8) & 0xFF);
@@ -522,7 +547,23 @@ public final class JavaSoundVoiceAudioPipeline {
         }
     }
 
-    private record SourcePlaybackState(JitterBuffer jitterBuffer, VoiceDecoder decoder, LowPassState lowPassState) {
+    private static final class SourcePlaybackState {
+        private final JitterBuffer jitterBuffer;
+        private final VoiceDecoder decoder;
+        private final LowPassState lowPassState;
+        private long lastActivity = System.currentTimeMillis();
+
+        private SourcePlaybackState(JitterBuffer jitterBuffer, VoiceDecoder decoder, LowPassState lowPassState) {
+            this.jitterBuffer = jitterBuffer;
+            this.decoder = decoder;
+            this.lowPassState = lowPassState;
+        }
+
+        public JitterBuffer jitterBuffer() { return jitterBuffer; }
+        public VoiceDecoder decoder() { return decoder; }
+        public LowPassState lowPassState() { return lowPassState; }
+        public long lastActivity() { return lastActivity; }
+        public void markActive() { lastActivity = System.currentTimeMillis(); }
     }
 
     private static final class LowPassState {

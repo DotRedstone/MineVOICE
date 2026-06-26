@@ -1,7 +1,9 @@
 package dev.minevoice.neoforge.client.audio;
 
+import com.mojang.logging.LogUtils;
 import dev.minevoice.common.protocol.VoiceChannel;
 import dev.minevoice.neoforge.client.ClientAudioSettings;
+import org.slf4j.Logger;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -15,14 +17,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Per-speaker OpenAL playback with an optional EFX direct-filter and room-reverb path.
+ */
 public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
     public static final String NAME = "openal";
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int AL_FALSE = 0;
     private static final int AL_TRUE = 1;
     private static final int AL_NO_ERROR = 0;
     private static final int AL_FORMAT_MONO16 = 0x1101;
     private static final int AL_POSITION = 0x1004;
+    private static final int AL_DIRECTION = 0x1005;
     private static final int AL_GAIN = 0x100A;
+    private static final int AL_CONE_INNER_ANGLE = 0x1001;
+    private static final int AL_CONE_OUTER_ANGLE = 0x1002;
+    private static final int AL_CONE_OUTER_GAIN = 0x1022;
     private static final int AL_ORIENTATION = 0x100F;
     private static final int AL_SOURCE_STATE = 0x1010;
     private static final int AL_PLAYING = 0x1012;
@@ -30,10 +40,32 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
     private static final int AL_BUFFERS_PROCESSED = 0x1016;
     private static final int AL_SOURCE_RELATIVE = 0x202;
     private static final int AL_ROLLOFF_FACTOR = 0x1021;
+    private static final int AL_FILTER_TYPE = 0x8001;
+    private static final int AL_FILTER_LOWPASS = 0x0001;
+    private static final int AL_LOWPASS_GAIN = 0x0001;
+    private static final int AL_LOWPASS_GAINHF = 0x0002;
+    private static final int AL_EFFECT_TYPE = 0x8001;
+    private static final int AL_EFFECT_REVERB = 0x0001;
+    private static final int AL_REVERB_DENSITY = 0x0001;
+    private static final int AL_REVERB_DIFFUSION = 0x0002;
+    private static final int AL_REVERB_GAIN = 0x0003;
+    private static final int AL_REVERB_GAINHF = 0x0004;
+    private static final int AL_REVERB_DECAY_TIME = 0x0005;
+    private static final int AL_REVERB_DECAY_HFRATIO = 0x0006;
+    private static final int AL_EFFECTSLOT_EFFECT = 0x0001;
+    private static final int AL_DIRECT_FILTER = 0x20005;
+    private static final int AL_AUXILIARY_SEND_FILTER = 0x20006;
 
     private final long device;
     private final long context;
     private final Map<UUID, SourceState> sources = new HashMap<>();
+    private ByteBuffer transferBuffer = ByteBuffer.allocateDirect(4096).order(ByteOrder.nativeOrder());
+    private FloatBuffer orientationBuffer = ByteBuffer.allocateDirect(Float.BYTES * 6).order(ByteOrder.nativeOrder()).asFloatBuffer();
+    private boolean efxEnabled;
+    private int auxiliarySlot = -1;
+    private int reverbEffect = -1;
+    private float appliedReverbGain = -1.0F;
+    private float appliedReverbDecay = -1.0F;
     private boolean closed;
 
     private OpenAlVoicePlaybackBackend(long device, long context) {
@@ -64,7 +96,10 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
             }
             createCapabilities(device);
             checkError("OpenAL capabilities");
-            return new OpenAlVoicePlaybackBackend(device, context);
+            OpenAlVoicePlaybackBackend backend = new OpenAlVoicePlaybackBackend(device, context);
+            backend.initializeEfx();
+            LOGGER.info("MineVOICE OpenAL playback initialized: efx={}", backend.efxEnabled);
+            return backend;
         } catch (RuntimeException exception) {
             if (context != 0L) {
                 alcDestroyContext(context);
@@ -76,7 +111,7 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
 
     @Override
     public String backendName() {
-        return NAME;
+        return efxEnabled ? NAME + "-efx" : NAME;
     }
 
     @Override
@@ -106,11 +141,12 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         float yaw = (float) Math.toRadians(listener.yaw());
         float forwardX = -((float) Math.sin(yaw));
         float forwardZ = (float) Math.cos(yaw);
-        FloatBuffer orientation = ByteBuffer.allocateDirect(Float.BYTES * 6)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer();
-        orientation.put(forwardX).put(0.0F).put(forwardZ).put(0.0F).put(1.0F).put(0.0F).flip();
-        alListenerfv(AL_ORIENTATION, orientation);
+        orientationBuffer.clear();
+        orientationBuffer.put(forwardX).put(0.0F).put(forwardZ).put(0.0F).put(1.0F).put(0.0F).flip();
+        alListenerfv(AL_ORIENTATION, orientationBuffer);
+        if (efxEnabled) {
+            applyRoomReverb(listener);
+        }
     }
 
     @Override
@@ -119,22 +155,42 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         SourceState state = sources.computeIfAbsent(speakerId, ignored -> createSource());
         cleanupProcessedBuffers(state);
         boolean positional = channel == VoiceChannel.PROXIMITY && source.known();
-        alSourcei(state.source(), AL_SOURCE_RELATIVE, positional ? AL_FALSE : AL_TRUE);
+        alSourcei(state.source, AL_SOURCE_RELATIVE, positional ? AL_FALSE : AL_TRUE);
         if (positional) {
-            alSource3f(state.source(), AL_POSITION, (float) source.x(), (float) source.y(), (float) source.z());
+            alSource3f(state.source, AL_POSITION, (float) source.x(), (float) source.y(), (float) source.z());
+            float yawRad = (float) Math.toRadians(source.yaw());
+            float pitchRad = (float) Math.toRadians(source.pitch());
+            float dirX = -((float) (Math.sin(yawRad) * Math.cos(pitchRad)));
+            float dirY = -((float) Math.sin(pitchRad));
+            float dirZ = (float) (Math.cos(yawRad) * Math.cos(pitchRad));
+            alSource3f(state.source, AL_DIRECTION, dirX, dirY, dirZ);
+            alSourcef(state.source, AL_CONE_INNER_ANGLE, 120.0F);
+            alSourcef(state.source, AL_CONE_OUTER_ANGLE, 240.0F);
+            alSourcef(state.source, AL_CONE_OUTER_GAIN, 0.15F);
         } else {
-            alSource3f(state.source(), AL_POSITION, 0.0F, 0.0F, 0.0F);
+            alSource3f(state.source, AL_POSITION, 0.0F, 0.0F, 0.0F);
+            alSource3f(state.source, AL_DIRECTION, 0.0F, 0.0F, 0.0F);
+            alSourcef(state.source, AL_CONE_INNER_ANGLE, 360.0F);
+            alSourcef(state.source, AL_CONE_OUTER_ANGLE, 360.0F);
+            alSourcef(state.source, AL_CONE_OUTER_GAIN, 1.0F);
         }
-        alSourcef(state.source(), AL_GAIN, Math.max(0.0F, Math.min(2.0F, gain)));
+        alSourcef(state.source, AL_GAIN, clamp(gain, 0.0F, 2.0F));
+        if (efxEnabled) {
+            applySourceEffects(state, source);
+        }
 
-        int buffer = alGenBuffers();
-        ByteBuffer audio = ByteBuffer.allocateDirect(pcm.length).order(ByteOrder.nativeOrder());
-        audio.put(pcm).flip();
-        alBufferData(buffer, AL_FORMAT_MONO16, audio, sampleRate);
-        alSourceQueueBuffers(state.source(), buffer);
-        state.queuedBuffers().add(buffer);
-        if (alGetSourcei(state.source(), AL_SOURCE_STATE) != AL_PLAYING) {
-            alSourcePlay(state.source());
+        Integer freeBuffer = state.freeBuffers.poll();
+        int buffer = freeBuffer != null ? freeBuffer : alGenBuffers();
+        if (transferBuffer.capacity() < pcm.length) {
+            transferBuffer = ByteBuffer.allocateDirect(pcm.length).order(ByteOrder.nativeOrder());
+        }
+        transferBuffer.clear();
+        transferBuffer.put(pcm).flip();
+        alBufferData(buffer, AL_FORMAT_MONO16, transferBuffer, sampleRate);
+        alSourceQueueBuffers(state.source, buffer);
+        state.queuedBuffers.add(buffer);
+        if (alGetSourcei(state.source, AL_SOURCE_STATE) != AL_PLAYING) {
+            alSourcePlay(state.source);
         }
         checkError("OpenAL source write");
     }
@@ -164,6 +220,7 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
                 deleteSource(source);
             }
             sources.clear();
+            closeEfx();
         } finally {
             alcMakeContextCurrent(0L);
             alcDestroyContext(context);
@@ -171,30 +228,106 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         }
     }
 
+    private void initializeEfx() {
+        if (!classPresent("org.lwjgl.openal.EXTEfx")) {
+            return;
+        }
+        try {
+            auxiliarySlot = alGenAuxiliaryEffectSlots();
+            reverbEffect = alGenEffects();
+            alEffecti(reverbEffect, AL_EFFECT_TYPE, AL_EFFECT_REVERB);
+            alAuxiliaryEffectSloti(auxiliarySlot, AL_EFFECTSLOT_EFFECT, reverbEffect);
+            checkError("OpenAL EFX initialization");
+            efxEnabled = true;
+        } catch (RuntimeException exception) {
+            closeEfx();
+            LOGGER.info("MineVOICE OpenAL EFX is unavailable; continuing with positional sources only: {}", exception.getMessage());
+        }
+    }
+
+    private void applyRoomReverb(VoiceListenerSnapshot listener) {
+        float gain = listener.environmentKnown() ? clamp(listener.reverbGain(), 0.0F, 0.65F) : 0.0F;
+        float decay = listener.environmentKnown() ? clamp(listener.reverbDecaySeconds(), 0.25F, 2.5F) : 0.7F;
+        if (Math.abs(gain - appliedReverbGain) < 0.01F && Math.abs(decay - appliedReverbDecay) < 0.02F) {
+            return;
+        }
+        alEffectf(reverbEffect, AL_REVERB_DENSITY, clamp(gain * 2.0F, 0.0F, 1.0F));
+        alEffectf(reverbEffect, AL_REVERB_DIFFUSION, 0.72F);
+        alEffectf(reverbEffect, AL_REVERB_GAIN, gain);
+        alEffectf(reverbEffect, AL_REVERB_GAINHF, 0.72F);
+        alEffectf(reverbEffect, AL_REVERB_DECAY_TIME, decay);
+        alEffectf(reverbEffect, AL_REVERB_DECAY_HFRATIO, 0.65F);
+        alAuxiliaryEffectSloti(auxiliarySlot, AL_EFFECTSLOT_EFFECT, reverbEffect);
+        checkError("OpenAL room reverb update");
+        appliedReverbGain = gain;
+        appliedReverbDecay = decay;
+    }
+
+    private void applySourceEffects(SourceState state, VoiceSourceSnapshot source) {
+        alFilterf(state.directFilter, AL_LOWPASS_GAIN, 1.0F);
+        alFilterf(state.directFilter, AL_LOWPASS_GAINHF, clamp(source.highFrequencyGain(), 0.02F, 1.0F));
+        alSourcei(state.source, AL_DIRECT_FILTER, state.directFilter);
+        alFilterf(state.reverbFilter, AL_LOWPASS_GAIN, clamp(source.reflectionGain(), 0.0F, 0.75F));
+        alFilterf(state.reverbFilter, AL_LOWPASS_GAINHF, 1.0F);
+        alSource3i(state.source, AL_AUXILIARY_SEND_FILTER, auxiliarySlot, 0, state.reverbFilter);
+    }
+
     private SourceState createSource() {
         int source = alGenSources();
         alSourcef(source, AL_ROLLOFF_FACTOR, 0.0F);
-        return new SourceState(source, new ArrayDeque<>());
+        if (!efxEnabled) {
+            return new SourceState(source, -1, -1);
+        }
+        int directFilter = alGenFilters();
+        alFilteri(directFilter, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
+        int reverbFilter = alGenFilters();
+        alFilteri(reverbFilter, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
+        return new SourceState(source, directFilter, reverbFilter);
     }
 
     private void cleanupProcessedBuffers(SourceState state) {
-        int processed = alGetSourcei(state.source(), AL_BUFFERS_PROCESSED);
-        for (int index = 0; index < processed; index++) {
-            int buffer = alSourceUnqueueBuffers(state.source());
-            state.queuedBuffers().remove(buffer);
-            alDeleteBuffers(buffer);
+        int processed = alGetSourcei(state.source, AL_BUFFERS_PROCESSED);
+        while (processed > 0) {
+            int buffer = alSourceUnqueueBuffers(state.source);
+            state.queuedBuffers.remove((Integer) buffer);
+            state.freeBuffers.add(buffer);
+            processed--;
         }
     }
 
     private void deleteSource(SourceState state) {
-        alSourceStop(state.source());
-        int queued = alGetSourcei(state.source(), AL_BUFFERS_QUEUED);
+        alSourceStop(state.source);
+        int queued = alGetSourcei(state.source, AL_BUFFERS_QUEUED);
         for (int index = 0; index < queued; index++) {
-            int buffer = alSourceUnqueueBuffers(state.source());
+            int buffer = alSourceUnqueueBuffers(state.source);
             alDeleteBuffers(buffer);
         }
-        state.queuedBuffers().clear();
-        alDeleteSources(state.source());
+        for (Integer buffer : state.freeBuffers) {
+            alDeleteBuffers(buffer);
+        }
+        state.freeBuffers.clear();
+        state.queuedBuffers.clear();
+        if (state.directFilter >= 0) {
+            alDeleteFilters(state.directFilter);
+        }
+        if (state.reverbFilter >= 0) {
+            alDeleteFilters(state.reverbFilter);
+        }
+        alDeleteSources(state.source);
+    }
+
+    private void closeEfx() {
+        if (reverbEffect >= 0) {
+            alDeleteEffects(reverbEffect);
+            reverbEffect = -1;
+        }
+        if (auxiliarySlot >= 0) {
+            alDeleteAuxiliaryEffectSlots(auxiliarySlot);
+            auxiliarySlot = -1;
+        }
+        efxEnabled = false;
+        appliedReverbGain = -1.0F;
+        appliedReverbDecay = -1.0F;
     }
 
     private void makeContextCurrent() {
@@ -211,6 +344,10 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         } catch (ClassNotFoundException exception) {
             return false;
         }
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private static long alcOpenDevice() {
@@ -285,6 +422,10 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         invoke("org.lwjgl.openal.AL10", "alSourcei", new Class<?>[]{int.class, int.class, int.class}, source, parameter, value);
     }
 
+    private static void alSource3i(int source, int parameter, int value1, int value2, int value3) {
+        invoke("org.lwjgl.openal.AL11", "alSource3i", new Class<?>[]{int.class, int.class, int.class, int.class, int.class}, source, parameter, value1, value2, value3);
+    }
+
     private static void alSourcef(int source, int parameter, float value) {
         invoke("org.lwjgl.openal.AL10", "alSourcef", new Class<?>[]{int.class, int.class, float.class}, source, parameter, value);
     }
@@ -303,6 +444,50 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
 
     private static void alListenerfv(int parameter, FloatBuffer values) {
         invoke("org.lwjgl.openal.AL10", "alListenerfv", new Class<?>[]{int.class, FloatBuffer.class}, parameter, values);
+    }
+
+    private static int alGenFilters() {
+        return (Integer) invoke("org.lwjgl.openal.EXTEfx", "alGenFilters", new Class<?>[]{});
+    }
+
+    private static void alDeleteFilters(int filter) {
+        invoke("org.lwjgl.openal.EXTEfx", "alDeleteFilters", new Class<?>[]{int.class}, filter);
+    }
+
+    private static void alFilteri(int filter, int parameter, int value) {
+        invoke("org.lwjgl.openal.EXTEfx", "alFilteri", new Class<?>[]{int.class, int.class, int.class}, filter, parameter, value);
+    }
+
+    private static void alFilterf(int filter, int parameter, float value) {
+        invoke("org.lwjgl.openal.EXTEfx", "alFilterf", new Class<?>[]{int.class, int.class, float.class}, filter, parameter, value);
+    }
+
+    private static int alGenAuxiliaryEffectSlots() {
+        return (Integer) invoke("org.lwjgl.openal.EXTEfx", "alGenAuxiliaryEffectSlots", new Class<?>[]{});
+    }
+
+    private static void alDeleteAuxiliaryEffectSlots(int slot) {
+        invoke("org.lwjgl.openal.EXTEfx", "alDeleteAuxiliaryEffectSlots", new Class<?>[]{int.class}, slot);
+    }
+
+    private static int alGenEffects() {
+        return (Integer) invoke("org.lwjgl.openal.EXTEfx", "alGenEffects", new Class<?>[]{});
+    }
+
+    private static void alDeleteEffects(int effect) {
+        invoke("org.lwjgl.openal.EXTEfx", "alDeleteEffects", new Class<?>[]{int.class}, effect);
+    }
+
+    private static void alEffecti(int effect, int parameter, int value) {
+        invoke("org.lwjgl.openal.EXTEfx", "alEffecti", new Class<?>[]{int.class, int.class, int.class}, effect, parameter, value);
+    }
+
+    private static void alEffectf(int effect, int parameter, float value) {
+        invoke("org.lwjgl.openal.EXTEfx", "alEffectf", new Class<?>[]{int.class, int.class, float.class}, effect, parameter, value);
+    }
+
+    private static void alAuxiliaryEffectSloti(int slot, int parameter, int value) {
+        invoke("org.lwjgl.openal.EXTEfx", "alAuxiliaryEffectSloti", new Class<?>[]{int.class, int.class, int.class}, slot, parameter, value);
     }
 
     private static int alGetError() {
@@ -326,6 +511,17 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
         }
     }
 
-    private record SourceState(int source, ArrayDeque<Integer> queuedBuffers) {
+    private static final class SourceState {
+        private final int source;
+        private final int directFilter;
+        private final int reverbFilter;
+        private final ArrayDeque<Integer> queuedBuffers = new ArrayDeque<>();
+        private final ArrayDeque<Integer> freeBuffers = new ArrayDeque<>();
+
+        private SourceState(int source, int directFilter, int reverbFilter) {
+            this.source = source;
+            this.directFilter = directFilter;
+            this.reverbFilter = reverbFilter;
+        }
     }
 }

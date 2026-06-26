@@ -4,9 +4,9 @@ package dev.minevoice.common.audio;
  * Smooths voice activity detection so a signal near the threshold does not flicker per frame.
  */
 public final class VoiceActivityGate {
-    private static final float DEFAULT_NOISE_FLOOR = 0.02F;
-    private static final float DEFAULT_CLOSE_MARGIN = 0.08F;
-    private static final int DEFAULT_HANGOVER_FRAMES = 4;
+    private static final float DEFAULT_NOISE_FLOOR = 0.001F;
+    private static final float DEFAULT_CLOSE_MARGIN = 0.01F;
+    private static final int DEFAULT_HANGOVER_FRAMES = 25;
 
     private final float noiseFloor;
     private final float closeMargin;
