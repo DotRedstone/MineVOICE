@@ -308,13 +308,15 @@ public final class JavaSoundVoiceAudioPipeline {
             float threshold,
             VoiceActivityGate activityGate
     ) {
-        if (pushToTalkDown) {
-            return activityGate.update(microphoneLevel, 0.01f);
-        }
         if (activationMode == VoiceActivationMode.PUSH_TO_TALK) {
-            activityGate.reset();
-            return false;
+            if (pushToTalkDown) {
+                return activityGate.update(microphoneLevel, 0.01f);
+            } else {
+                activityGate.reset();
+                return false;
+            }
         }
+        
         return activityGate.update(microphoneLevel, threshold);
     }
 
