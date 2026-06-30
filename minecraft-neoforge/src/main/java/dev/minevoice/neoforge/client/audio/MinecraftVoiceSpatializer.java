@@ -129,7 +129,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
         double angle = (pan + 1.0D) * Math.PI / 4.0D;
         float gain = path.directGain() * headShadow;
         if (currentListener.underwater() || source.underwater()) {
-            gain *= 0.6F;
+            gain *= 0.9F;
         }
         StereoGains gains = new StereoGains((float) (gain * Math.cos(angle)), (float) (gain * Math.sin(angle)));
         debugSnapshot = debugSnapshot(speakerId, channel, source.position().distanceTo(currentListener.position()), pan, gains, path);
@@ -187,13 +187,13 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                 hfGain *= (float) (1.0 - 0.9 * -forwardDot);
             }
             if (currentListener.underwater() || source.underwater()) {
-                hfGain *= 0.1F;
+                hfGain *= 0.4F;
             }
         }
         
         float directGain = path.directGain();
         if (currentListener != null && (currentListener.underwater() || source.underwater())) {
-            directGain *= 0.6F;
+            directGain *= 0.9F;
         }
 
         return new VoiceSourceSnapshot(
