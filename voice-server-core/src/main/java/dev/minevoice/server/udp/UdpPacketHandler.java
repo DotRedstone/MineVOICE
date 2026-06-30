@@ -138,14 +138,34 @@ public final class UdpPacketHandler {
                 }
             }
             case VOICE_FRAME -> {
-                VoiceFrame frame = VoiceFramePayloadCodec.decode(packet.payload());
-                if (!frame.senderPlayerId().equals(packet.playerId()) || !isAuthenticatedSource(source, packet.playerId())) {
+                if (!isAuthenticatedSource(source, packet.playerId())) {
                     send(socket, source, VoicePacketType.ERROR, packet.playerId(), packet.sequence(), "unauthenticated voice frame".getBytes());
+                    return;
+                }
+                VoiceSession session = sessionRegistry.find(packet.playerId());
+                if (session == null || session.sessionKey() == null) {
+                    return;
+                }
+                byte[] decryptedPayload;
+                try {
+                    decryptedPayload = AesGcmCipher.decrypt(session.sessionKey(), packet.payload());
+                } catch (RuntimeException e) {
+                    logger.debug("failed to decrypt voice frame from " + packet.playerId());
+                    return;
+                }
+                VoiceFrame frame;
+                try {
+                    frame = VoiceFramePayloadCodec.decode(decryptedPayload);
+                } catch (RuntimeException e) {
+                    logger.debug("failed to decode voice frame payload from " + packet.playerId());
+                    return;
+                }
+                if (!frame.senderPlayerId().equals(packet.playerId())) {
                     return;
                 }
                 sessionRegistry.touch(packet.playerId());
                 int targets = relayFrame(socket, packet, frame);
-                logger.debug("relayed voice frame targets=" + targets + " player=" + packet.playerId());
+                // logger.debug("relayed voice frame targets=" + targets + " player=" + packet.playerId());
                 send(socket, source, VoicePacketType.VOICE_FRAME, packet.playerId(), packet.sequence(), new byte[0]);
             }
             case SERVER_STATE -> handleServerState(packet);
@@ -179,11 +199,12 @@ public final class UdpPacketHandler {
                 return;
             }
 
+            byte[] sessionKey = SessionKeyDeriver.derive(sharedSecret, token);
             UUID sessionId = token.playerUuid();
             VoiceEndpoint endpoint = new VoiceEndpoint(source.getAddress().getHostAddress(), source.getPort());
             VoicePlayerInfo playerInfo = new VoicePlayerInfo(token.playerUuid(), token.playerUuid().toString(), endpoint);
             Instant now = Instant.now();
-            sessionRegistry.register(new VoiceSession(sessionId, playerInfo, VoiceSessionState.CONNECTED, now, now));
+            sessionRegistry.register(new VoiceSession(sessionId, playerInfo, VoiceSessionState.CONNECTED, now, now, sessionKey));
             send(socket, source, VoicePacketType.AUTH_OK, token.playerUuid(), packet.sequence(), new byte[0]);
         } catch (RuntimeException exception) {
             logger.warn("auth failed player=" + packet.playerId() + " reason=malformed token: " + exception.getMessage());
@@ -219,18 +240,22 @@ public final class UdpPacketHandler {
     }
 
     private int relayFrame(DatagramSocket socket, VoicePacket packet, VoiceFrame frame) {
-        VoicePacket forwarded = new VoicePacket(
-                VoicePacketType.VOICE_FRAME,
-                packet.protocolVersion(),
-                frame.senderPlayerId(),
-                packet.sequence(),
-                System.currentTimeMillis(),
-                packet.payload()
-        );
-        byte[] bytes = packetCodec.encode(forwarded);
         int sent = 0;
+        byte[] rawFrameBytes = VoiceFramePayloadCodec.encode(frame);
         for (VoiceSession session : relayService.targetsFor(frame)) {
+            if (session.sessionKey() == null) continue;
             try {
+                byte[] encryptedPayload = AesGcmCipher.encrypt(session.sessionKey(), rawFrameBytes);
+                VoicePacket forwarded = new VoicePacket(
+                        VoicePacketType.VOICE_FRAME,
+                        packet.protocolVersion(),
+                        frame.senderPlayerId(),
+                        packet.sequence(),
+                        System.currentTimeMillis(),
+                        encryptedPayload
+                );
+                byte[] bytes = packetCodec.encode(forwarded);
+                
                 VoiceEndpoint endpoint = session.playerInfo().endpoint();
                 DatagramPacket datagramPacket = new DatagramPacket(
                         bytes,
@@ -242,7 +267,7 @@ public final class UdpPacketHandler {
                 bandwidthCounter.recordSent(bytes.length);
                 sent++;
             } catch (Exception exception) {
-                logger.debug("failed to relay voice frame: " + exception.getMessage());
+                logger.debug("failed to relay voice frame to " + session.playerInfo().playerUuid() + ": " + exception.getMessage());
             }
         }
         return sent;
