@@ -528,7 +528,7 @@ public final class JavaSoundVoiceAudioPipeline {
 
     private static void applyLowPass(byte[] pcm, LowPassState state, float highFrequencyGain) {
         float clampedHighFrequency = Math.max(0.02F, Math.min(1.0F, highFrequencyGain));
-        float smoothing = 0.08F + 0.84F * clampedHighFrequency;
+        float smoothing = 0.02F + 0.98F * clampedHighFrequency;
         float previous = state.previousSample();
         for (int index = 0; index + 1 < pcm.length; index += 2) {
             int sample = (pcm[index + 1] << 8) | (pcm[index] & 0xFF);

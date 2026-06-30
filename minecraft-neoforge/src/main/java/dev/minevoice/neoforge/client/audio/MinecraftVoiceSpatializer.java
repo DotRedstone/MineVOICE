@@ -124,7 +124,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
         double forwardDot = horizontalDistance < 0.0001D
                 ? 0.0D
                 : clamp((deltaX * forwardX + deltaZ * forwardZ) / horizontalDistance, -1.0D, 1.0D);
-        float headShadow = (float) (1.0 - 0.4 * Math.max(0, -forwardDot));
+        float headShadow = (float) (1.0 - 0.5 * Math.max(0, -forwardDot));
 
         double angle = (pan + 1.0D) * Math.PI / 4.0D;
         float gain = path.directGain() * headShadow;
@@ -180,7 +180,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                     ? 0.0D
                     : clamp((deltaX * forwardX + deltaZ * forwardZ) / horizontalDistance, -1.0D, 1.0D);
             if (forwardDot < 0) {
-                hfGain *= (float) (1.0 - 0.6 * -forwardDot);
+                hfGain *= (float) (1.0 - 0.9 * -forwardDot);
             }
         }
 
