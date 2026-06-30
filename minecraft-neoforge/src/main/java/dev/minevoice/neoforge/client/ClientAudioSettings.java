@@ -30,8 +30,8 @@ public record ClientAudioSettings(
         return new ClientAudioSettings(
             null, null, null,
             1.0F, 1.0F, 1.0F,
-            VoiceActivationMode.VOICE_ACTIVITY, 50.0F,
-            VoiceActivationMode.PUSH_TO_TALK, 50.0F,
+            VoiceActivationMode.VOICE_ACTIVITY, 0.05F,
+            VoiceActivationMode.PUSH_TO_TALK, 0.05F,
             true, null, null,
             false, false, true, true, 24, DebugInfoLevel.OFF, false, 0xFFE040, 0, 0, true
         );

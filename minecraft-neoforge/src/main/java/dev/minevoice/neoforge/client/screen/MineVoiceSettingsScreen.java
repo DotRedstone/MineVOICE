@@ -546,12 +546,7 @@ public final class MineVoiceSettingsScreen extends Screen {
             setMessage(Component.translatable(labelKey, Math.round(value * 100.0D)));
         }
 
-        @Override
-        public void playDownSound(net.minecraft.client.sounds.SoundManager handler) {
-            if (this.isFocused()) {
-                super.playDownSound(handler);
-            }
-        }
+
 
     }
 }
