@@ -111,5 +111,8 @@
   "screen.minevoice.indicator.none": "None",
   "screen.minevoice.indicator.avatar": "Avatar",
   "screen.minevoice.indicator.arrow": "Arrow",
-  "screen.minevoice.hrtf_enabled": "Enable HRTF (Head-Related Transfer Function)"
+  "screen.minevoice.hrtf_enabled": "Enable HRTF (Head-Related Transfer Function)",
+  "screen.minevoice.reduced": "Reduced",
+  "options.on": "ON",
+  "options.off": "OFF"
 }

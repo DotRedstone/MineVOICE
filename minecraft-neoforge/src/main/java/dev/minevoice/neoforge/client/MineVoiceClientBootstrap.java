@@ -286,7 +286,7 @@ public final class MineVoiceClientBootstrap {
     }
 
     private static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (!SETTINGS_STORE.load().debugRenderRays()) {
+        if (SETTINGS_STORE.load().debugRenderRaysMode() == 0) {
             return;
         }
         dev.minevoice.neoforge.client.audio.MineVoiceAcousticDebugRenderer.render(

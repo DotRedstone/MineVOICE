@@ -443,16 +443,25 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
     }
 
     private AcousticDebugSnapshot buildAcousticDebugSnapshot(Vec3 listenerPosition) {
+        int mode = dev.minevoice.neoforge.client.MineVoiceClientBootstrap.settings().debugRenderRaysMode();
+        if (mode == 0) {
+            return AcousticDebugSnapshot.DISABLED;
+        }
+        
         List<AcousticDebugSnapshot.Line> lines = new ArrayList<>();
         // Environmental probes (the ones that hit a wall)
-        for (ReflectionProbe probe : reflectionProbes) {
-            lines.add(new AcousticDebugSnapshot.Line(listenerPosition, probe.position(), 0, 255, 255, 180));
+        if (mode == 1) {
+            for (ReflectionProbe probe : reflectionProbes) {
+                lines.add(new AcousticDebugSnapshot.Line(listenerPosition, probe.position(), 0, 255, 255, 180));
+            }
         }
         for (SourceSnapshot source : sources.values()) {
             AcousticPath path = source.path();
             // Direct path: listener -> source (red if occluded, green if clear)
             if (path.occluded()) {
-                lines.add(new AcousticDebugSnapshot.Line(listenerPosition, source.position(), 232, 72, 60, 240));
+                if (mode == 1) {
+                    lines.add(new AcousticDebugSnapshot.Line(listenerPosition, source.position(), 232, 72, 60, 240));
+                }
             } else {
                 lines.add(new AcousticDebugSnapshot.Line(listenerPosition, source.position(), 80, 230, 130, 240));
             }
@@ -462,9 +471,11 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                 lines.add(new AcousticDebugSnapshot.Line(reflectionPoint, listenerPosition, 245, 185, 60, 140));
             }
             // Virtual position indicator: source -> virtual position (magenta, if differs)
-            Vec3 virtualPos = path.virtualPosition();
-            if (virtualPos.distanceToSqr(source.position()) > 0.25D) {
-                lines.add(new AcousticDebugSnapshot.Line(source.position(), virtualPos, 200, 80, 230, 200));
+            if (mode == 1) {
+                Vec3 virtualPos = path.virtualPosition();
+                if (virtualPos.distanceToSqr(source.position()) > 0.25D) {
+                    lines.add(new AcousticDebugSnapshot.Line(source.position(), virtualPos, 200, 80, 230, 200));
+                }
             }
         }
         return new AcousticDebugSnapshot(true, lines);

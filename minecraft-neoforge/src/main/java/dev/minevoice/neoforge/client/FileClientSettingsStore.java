@@ -62,7 +62,7 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
                 booleanProperty(properties, "nameplateIconsEnabled", defaults.nameplateIconsEnabled()),
                 intProperty(properties, "hudIconSize", defaults.hudIconSize()),
                 debugInfoLevel(properties, defaults.debugInfoLevel()),
-                booleanProperty(properties, "debugRenderRays", defaults.debugRenderRays()),
+                intProperty(properties, "debugRenderRaysMode", defaults.debugRenderRaysMode()),
                 intProperty(properties, "groupMemberColor", defaults.groupMemberColor()),
                 intProperty(properties, "outOfSightIndicatorMode", defaults.outOfSightIndicatorMode()),
                 intProperty(properties, "occludedIndicatorMode", defaults.occludedIndicatorMode()),
@@ -94,7 +94,7 @@ public final class FileClientSettingsStore implements ClientSettingsStore {
         properties.setProperty("hudIconSize", Integer.toString(settings.hudIconSize()));
         properties.setProperty("debugInfoLevel", settings.debugInfoLevel().name());
         properties.setProperty("showDebugConnectionInfo", Boolean.toString(settings.showDebugConnectionInfo()));
-        properties.setProperty("debugRenderRays", Boolean.toString(settings.debugRenderRays()));
+        properties.setProperty("debugRenderRaysMode", String.valueOf(settings.debugRenderRaysMode()));
         properties.setProperty("groupMemberColor", String.valueOf(settings.groupMemberColor()));
         properties.setProperty("outOfSightIndicatorMode", String.valueOf(settings.outOfSightIndicatorMode()));
         properties.setProperty("occludedIndicatorMode", String.valueOf(settings.occludedIndicatorMode()));

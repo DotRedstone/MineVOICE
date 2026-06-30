@@ -23,7 +23,7 @@ public final class MineVoiceSettingsScreenModel {
     private boolean nameplateIconsEnabled;
     private int hudIconSize;
     private DebugInfoLevel debugInfoLevel;
-    private boolean debugRenderRays;
+    private int debugRenderRaysMode;
     private boolean hrtfEnabled;
     private int groupMemberColor;
     private int outOfSightIndicatorMode;
@@ -49,7 +49,7 @@ public final class MineVoiceSettingsScreenModel {
         nameplateIconsEnabled = settings.nameplateIconsEnabled();
         hudIconSize = settings.hudIconSize();
         debugInfoLevel = settings.debugInfoLevel();
-        debugRenderRays = settings.debugRenderRays();
+        debugRenderRaysMode = settings.debugRenderRaysMode();
         hrtfEnabled = settings.hrtfEnabled();
         groupMemberColor = settings.groupMemberColor();
         outOfSightIndicatorMode = settings.outOfSightIndicatorMode();
@@ -81,7 +81,7 @@ public final class MineVoiceSettingsScreenModel {
                 nameplateIconsEnabled,
                 hudIconSize,
                 debugInfoLevel,
-                debugRenderRays,
+                debugRenderRaysMode,
                 groupMemberColor,
                 outOfSightIndicatorMode,
                 occludedIndicatorMode,
@@ -110,7 +110,7 @@ public final class MineVoiceSettingsScreenModel {
         nameplateIconsEnabled = defaults.nameplateIconsEnabled();
         hudIconSize = defaults.hudIconSize();
         debugInfoLevel = defaults.debugInfoLevel();
-        debugRenderRays = defaults.debugRenderRays();
+        debugRenderRaysMode = defaults.debugRenderRaysMode();
         groupMemberColor = defaults.groupMemberColor();
         outOfSightIndicatorMode = defaults.outOfSightIndicatorMode();
         occludedIndicatorMode = defaults.occludedIndicatorMode();
@@ -265,9 +265,9 @@ public int hudIconSize() {
         return Math.max(0.0F, Math.min(1.0F, value));
     }
 
-    public boolean debugRenderRays() { return debugRenderRays; }
+    public int debugRenderRaysMode() { return debugRenderRaysMode; }
     public boolean hrtfEnabled() { return hrtfEnabled; }
-    public void setDebugRenderRays(boolean val) { this.debugRenderRays = val; }
+    public void setDebugRenderRaysMode(int val) { this.debugRenderRaysMode = val; }
     public void setHrtfEnabled(boolean val) { this.hrtfEnabled = val; }
     public int groupMemberColor() { return groupMemberColor; }
     public void setGroupMemberColor(int val) { this.groupMemberColor = val; }

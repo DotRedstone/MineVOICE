@@ -185,8 +185,10 @@ public final class MineVoiceSettingsScreen extends Screen {
             model.setDebugInfoLevel(model.debugInfoLevel().next());
             button.setMessage(debugLevelMessage());
         });
-        addToggle(left, y + 21, contentWidth, "screen.minevoice.debug_render_rays", model.debugRenderRays(),
-                model::setDebugRenderRays);
+        addButton(debugRenderRaysMessage(), left, y + 21, contentWidth, ROW_HEIGHT, button -> {
+            model.setDebugRenderRaysMode((model.debugRenderRaysMode() + 1) % 3);
+            button.setMessage(debugRenderRaysMessage());
+        });
         addButton(Component.translatable("screen.minevoice.print_debug_snapshot"),
                 left, y + 42, contentWidth, ROW_HEIGHT, button -> {
                     if (minecraft != null && minecraft.player != null) {
@@ -327,6 +329,15 @@ public final class MineVoiceSettingsScreen extends Screen {
             default -> "screen.minevoice.indicator.none";
         };
         return Component.translatable("screen.minevoice.out_of_sight_indicator").append(": ").append(Component.translatable(key));
+    }
+
+    private Component debugRenderRaysMessage() {
+        String key = switch (model.debugRenderRaysMode()) {
+            case 1 -> "options.on";
+            case 2 -> "screen.minevoice.reduced";
+            default -> "options.off";
+        };
+        return Component.translatable("screen.minevoice.debug_render_rays").append(": ").append(Component.translatable(key));
     }
 
     private Component occludedIndicatorMessage() {
