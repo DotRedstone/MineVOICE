@@ -118,8 +118,16 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
         double pan = horizontalDistance < 0.0001D
                 ? 0.0D
                 : clamp((deltaX * rightX + deltaZ * rightZ) / horizontalDistance, -1.0D, 1.0D);
+        
+        double forwardX = -Math.sin(yaw);
+        double forwardZ = Math.cos(yaw);
+        double forwardDot = horizontalDistance < 0.0001D
+                ? 0.0D
+                : clamp((deltaX * forwardX + deltaZ * forwardZ) / horizontalDistance, -1.0D, 1.0D);
+        float headShadow = (float) (1.0 - 0.4 * Math.max(0, -forwardDot));
+
         double angle = (pan + 1.0D) * Math.PI / 4.0D;
-        float gain = path.directGain();
+        float gain = path.directGain() * headShadow;
         StereoGains gains = new StereoGains((float) (gain * Math.cos(angle)), (float) (gain * Math.sin(angle)));
         debugSnapshot = debugSnapshot(speakerId, channel, source.position().distanceTo(currentListener.position()), pan, gains, path);
         return gains;
@@ -158,6 +166,24 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
             return VoiceSourceSnapshot.unknown(speakerId);
         }
         AcousticPath path = source.path();
+        
+        float hfGain = path.highFrequencyGain();
+        ListenerSnapshot currentListener = listener;
+        if (currentListener != null) {
+            double deltaX = path.virtualPosition().x - currentListener.position().x;
+            double deltaZ = path.virtualPosition().z - currentListener.position().z;
+            double horizontalDistance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+            double yaw = Math.toRadians(currentListener.yaw());
+            double forwardX = -Math.sin(yaw);
+            double forwardZ = Math.cos(yaw);
+            double forwardDot = horizontalDistance < 0.0001D
+                    ? 0.0D
+                    : clamp((deltaX * forwardX + deltaZ * forwardZ) / horizontalDistance, -1.0D, 1.0D);
+            if (forwardDot < 0) {
+                hfGain *= (float) (1.0 - 0.6 * -forwardDot);
+            }
+        }
+
         return new VoiceSourceSnapshot(
                 speakerId,
                 path.virtualPosition().x,
@@ -168,7 +194,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                 true,
                 path.occluded(),
                 path.directGain(),
-                path.highFrequencyGain(),
+                hfGain,
                 path.reflectionGain(),
                 path.reflectionProbeCount()
         );
