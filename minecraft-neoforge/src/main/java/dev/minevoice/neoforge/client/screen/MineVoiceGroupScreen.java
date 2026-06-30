@@ -676,6 +676,13 @@ public final class MineVoiceGroupScreen extends Screen {
         }
 
         @Override
+        public void onRelease(double mouseX, double mouseY) {
+            // Prevent the slider from playing a sound on release.
+            // This fixes the bug where releasing the mouse over the slider right after
+            // opening the screen from an overlapping button causes a second click sound.
+        }
+
+        @Override
         protected void applyValue() {
             MineVoiceClientBootstrap.setPlayerVolume(playerId, (float) value * 2.0F);
         }
