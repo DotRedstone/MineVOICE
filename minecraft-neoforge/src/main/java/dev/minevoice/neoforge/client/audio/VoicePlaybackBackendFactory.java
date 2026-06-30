@@ -10,11 +10,13 @@ public final class VoicePlaybackBackendFactory {
 
     public static VoicePlaybackBackend open(ClientAudioSettings settings, AudioFormat format, int bufferBytes) {
         String requestedBackend = normalizeBackendName(settings.audioPlaybackBackend());
-        if (OpenAlVoicePlaybackBackend.NAME.equals(requestedBackend)) {
-            try {
-                return OpenAlVoicePlaybackBackend.open(settings);
-            } catch (RuntimeException exception) {
-                return JavaSoundVoicePlaybackBackend.open(settings, format, bufferBytes);
+        if (OpenAlVoicePlaybackBackend.NAME.equals(requestedBackend) || "auto".equals(requestedBackend)) {
+            if (OpenAlVoicePlaybackBackend.available()) {
+                try {
+                    return OpenAlVoicePlaybackBackend.open(settings);
+                } catch (RuntimeException exception) {
+                    // Fallback to JavaSound if OpenAL fails
+                }
             }
         }
         return JavaSoundVoicePlaybackBackend.open(settings, format, bufferBytes);
