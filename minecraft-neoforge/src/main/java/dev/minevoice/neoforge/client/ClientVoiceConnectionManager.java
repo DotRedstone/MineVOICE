@@ -10,7 +10,7 @@ import dev.minevoice.common.protocol.VoicePacket;
 import dev.minevoice.common.protocol.VoicePacketCodec;
 import dev.minevoice.common.protocol.VoicePacketType;
 import dev.minevoice.common.audio.VoiceCodecFactory;
-import dev.minevoice.neoforge.client.audio.JavaSoundVoiceAudioPipeline;
+import dev.minevoice.neoforge.client.audio.ClientVoiceAudioPipeline;
 import dev.minevoice.neoforge.client.audio.MinecraftVoiceSpatializer;
 import dev.minevoice.neoforge.client.audio.AcousticDebugSnapshot;
 import dev.minevoice.neoforge.client.audio.VoicePlaybackStats;
@@ -57,7 +57,7 @@ public final class ClientVoiceConnectionManager {
     private final AtomicLong voicePayloadBytesReceived = new AtomicLong();
     private volatile long connectedAtMillis;
     private Thread receiveThread;
-    private volatile JavaSoundVoiceAudioPipeline audioPipeline;
+    private volatile ClientVoiceAudioPipeline audioPipeline;
     private byte[] sessionKey;
 
     public ClientVoiceConnectionManager(
@@ -133,7 +133,7 @@ public final class ClientVoiceConnectionManager {
     }
 
     public VoicePlaybackStats playbackStats() {
-        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        ClientVoiceAudioPipeline pipeline = audioPipeline;
         return pipeline == null ? VoicePlaybackStats.empty() : pipeline.playbackStats();
     }
 
@@ -155,7 +155,7 @@ public final class ClientVoiceConnectionManager {
 
     public void setPushToTalkDown(boolean pressed) {
         hudState.setPushToTalkDown(pressed);
-        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        ClientVoiceAudioPipeline pipeline = audioPipeline;
         if (pipeline != null) {
             pipeline.setPushToTalkDown(pressed);
         }
@@ -167,7 +167,7 @@ public final class ClientVoiceConnectionManager {
 
     public void setGroupPushToTalkDown(boolean pressed) {
         hudState.setGroupPushToTalkDown(pressed);
-        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        ClientVoiceAudioPipeline pipeline = audioPipeline;
         if (pipeline != null) {
             pipeline.setGroupPushToTalkDown(pressed);
         }
@@ -184,7 +184,7 @@ public final class ClientVoiceConnectionManager {
             if (!running.get() || audioPipeline != null || playerId == null) {
                 return;
             }
-            audioPipeline = new JavaSoundVoiceAudioPipeline(
+            audioPipeline = new ClientVoiceAudioPipeline(
                     playerId,
                     this::serverAudioSettings,
                     this::sendFrame,
@@ -227,7 +227,7 @@ public final class ClientVoiceConnectionManager {
                 if (packet == null) {
                     continue;
                 }
-                JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+                ClientVoiceAudioPipeline pipeline = audioPipeline;
                 if (packet.packetType() == VoicePacketType.VOICE_FRAME && pipeline != null && packet.payload().length > 0) {
                     byte[] payload = packet.payload();
                     if (sessionKey != null && sessionKey.length == 16) {
@@ -291,7 +291,7 @@ public final class ClientVoiceConnectionManager {
     }
 
     private void stopAudioPipeline() {
-        JavaSoundVoiceAudioPipeline pipeline = audioPipeline;
+        ClientVoiceAudioPipeline pipeline = audioPipeline;
         audioPipeline = null;
         if (pipeline != null) {
             pipeline.stop();

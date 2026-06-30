@@ -52,10 +52,10 @@ public final class JavaSoundAudioDeviceTester {
     }
 
     private static SourceDataLine openOutput(ClientAudioSettings settings) {
-        DataLine.Info info = new DataLine.Info(SourceDataLine.class, JavaSoundVoiceAudioPipeline.PLAYBACK_FORMAT);
+        DataLine.Info info = new DataLine.Info(SourceDataLine.class, ClientVoiceAudioPipeline.PLAYBACK_FORMAT);
         SourceDataLine line = (SourceDataLine) JavaSoundDeviceSelector.getLine(settings.outputDevice(), info);
         try {
-            line.open(JavaSoundVoiceAudioPipeline.PLAYBACK_FORMAT);
+            line.open(ClientVoiceAudioPipeline.PLAYBACK_FORMAT);
             return line;
         } catch (Exception exception) {
             line.close();
@@ -64,10 +64,10 @@ public final class JavaSoundAudioDeviceTester {
     }
 
     private static TargetDataLine openInput(ClientAudioSettings settings) {
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, JavaSoundVoiceAudioPipeline.CAPTURE_FORMAT);
+        DataLine.Info info = new DataLine.Info(TargetDataLine.class, ClientVoiceAudioPipeline.CAPTURE_FORMAT);
         TargetDataLine line = (TargetDataLine) JavaSoundDeviceSelector.getLine(settings.microphoneDevice(), info);
         try {
-            line.open(JavaSoundVoiceAudioPipeline.CAPTURE_FORMAT);
+            line.open(ClientVoiceAudioPipeline.CAPTURE_FORMAT);
             return line;
         } catch (Exception exception) {
             line.close();
