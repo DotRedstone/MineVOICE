@@ -158,11 +158,19 @@ public final class OpenAlVoicePlaybackBackend implements VoicePlaybackBackend {
     public void updateListener(VoiceListenerSnapshot listener) {
         makeContextCurrent();
         alListener3f(AL_POSITION, (float) listener.x(), (float) listener.y(), (float) listener.z());
-        float yaw = (float) Math.toRadians(listener.yaw());
-        float forwardX = -((float) Math.sin(yaw));
-        float forwardZ = (float) Math.cos(yaw);
+        float yawRad = (float) Math.toRadians(listener.yaw());
+        float pitchRad = (float) Math.toRadians(listener.pitch());
+        float atX = -((float) (Math.sin(yawRad) * Math.cos(pitchRad)));
+        float atY = -((float) Math.sin(pitchRad));
+        float atZ = (float) (Math.cos(yawRad) * Math.cos(pitchRad));
+        
+        float upPitchRad = (float) Math.toRadians(listener.pitch() - 90.0f);
+        float upX = -((float) (Math.sin(yawRad) * Math.cos(upPitchRad)));
+        float upY = -((float) Math.sin(upPitchRad));
+        float upZ = (float) (Math.cos(yawRad) * Math.cos(upPitchRad));
+        
         orientationBuffer.clear();
-        orientationBuffer.put(forwardX).put(0.0F).put(forwardZ).put(0.0F).put(1.0F).put(0.0F).flip();
+        orientationBuffer.put(atX).put(atY).put(atZ).put(upX).put(upY).put(upZ).flip();
         alListenerfv(AL_ORIENTATION, orientationBuffer);
         if (efxEnabled) {
             applyRoomReverb(listener);

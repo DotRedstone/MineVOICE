@@ -71,7 +71,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
             activeConfigRevision = config.revision();
         }
         AcousticEnvironment environment = environmentFor(reflectionProbes, config);
-        listener = new ListenerSnapshot(listenerPosition, minecraft.gameRenderer.getMainCamera().getYRot(), environment);
+        listener = new ListenerSnapshot(listenerPosition, minecraft.gameRenderer.getMainCamera().getYRot(), minecraft.gameRenderer.getMainCamera().getXRot(), environment);
 
         Set<UUID> visiblePlayers = new HashSet<>();
         for (Player player : level.players()) {
@@ -153,6 +153,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                 currentListener.position().y,
                 currentListener.position().z,
                 currentListener.yaw(),
+                currentListener.pitch(),
                 currentListener.environment().known(),
                 currentListener.environment().reverbGain(),
                 currentListener.environment().reverbDecaySeconds()
@@ -525,7 +526,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
         return Math.max(min, Math.min(max, value));
     }
 
-    private record ListenerSnapshot(Vec3 position, float yaw, AcousticEnvironment environment) {
+    private record ListenerSnapshot(Vec3 position, float yaw, float pitch, AcousticEnvironment environment) {
     }
 
     private record SourceSnapshot(

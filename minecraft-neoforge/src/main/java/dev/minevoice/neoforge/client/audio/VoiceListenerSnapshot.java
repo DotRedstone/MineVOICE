@@ -5,11 +5,12 @@ public record VoiceListenerSnapshot(
         double y,
         double z,
         float yaw,
+        float pitch,
         boolean environmentKnown,
         float reverbGain,
         float reverbDecaySeconds
 ) {
     public static VoiceListenerSnapshot unavailable() {
-        return new VoiceListenerSnapshot(0.0D, 0.0D, 0.0D, 0.0F, false, 0.0F, 0.7F);
+        return new VoiceListenerSnapshot(0.0D, 0.0D, 0.0D, 0.0F, 0.0F, false, 0.0F, 0.7F);
     }
 }
