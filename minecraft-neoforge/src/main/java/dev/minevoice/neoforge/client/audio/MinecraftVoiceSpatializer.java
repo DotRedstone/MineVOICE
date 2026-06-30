@@ -71,7 +71,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
             activeConfigRevision = config.revision();
         }
         AcousticEnvironment environment = environmentFor(reflectionProbes, config);
-        listener = new ListenerSnapshot(listenerPosition, minecraft.gameRenderer.getMainCamera().getYRot(), minecraft.gameRenderer.getMainCamera().getXRot(), environment);
+        listener = new ListenerSnapshot(listenerPosition, minecraft.gameRenderer.getMainCamera().getYRot(), minecraft.gameRenderer.getMainCamera().getXRot(), localPlayer.isUnderWater(), environment);
 
         Set<UUID> visiblePlayers = new HashSet<>();
         for (Player player : level.players()) {
@@ -88,7 +88,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                 AcousticPath path = config.enabled()
                         ? analyzePath(level, localPlayer, listenerPosition, sourcePosition, config, reflectionProbes)
                         : AcousticPath.clear(sourcePosition, listenerPosition.distanceTo(sourcePosition));
-                sources.put(playerId, new SourceSnapshot(sourcePosition, yaw, pitch, listenerPosition, path, now, config.revision()));
+                sources.put(playerId, new SourceSnapshot(sourcePosition, yaw, pitch, player.isUnderWater(), listenerPosition, path, now, config.revision()));
             }
         }
         sources.keySet().retainAll(visiblePlayers);
@@ -128,6 +128,9 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
 
         double angle = (pan + 1.0D) * Math.PI / 4.0D;
         float gain = path.directGain() * headShadow;
+        if (currentListener.underwater() || source.underwater()) {
+            gain *= 0.6F;
+        }
         StereoGains gains = new StereoGains((float) (gain * Math.cos(angle)), (float) (gain * Math.sin(angle)));
         debugSnapshot = debugSnapshot(speakerId, channel, source.position().distanceTo(currentListener.position()), pan, gains, path);
         return gains;
@@ -183,6 +186,14 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
             if (forwardDot < 0) {
                 hfGain *= (float) (1.0 - 0.9 * -forwardDot);
             }
+            if (currentListener.underwater() || source.underwater()) {
+                hfGain *= 0.1F;
+            }
+        }
+        
+        float directGain = path.directGain();
+        if (currentListener != null && (currentListener.underwater() || source.underwater())) {
+            directGain *= 0.6F;
         }
 
         return new VoiceSourceSnapshot(
@@ -194,7 +205,7 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
                 source.pitch(),
                 true,
                 path.occluded(),
-                path.directGain(),
+                directGain,
                 hfGain,
                 path.reflectionGain(),
                 path.reflectionProbeCount()
@@ -526,13 +537,14 @@ public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceS
         return Math.max(min, Math.min(max, value));
     }
 
-    private record ListenerSnapshot(Vec3 position, float yaw, float pitch, AcousticEnvironment environment) {
+    private record ListenerSnapshot(Vec3 position, float yaw, float pitch, boolean underwater, AcousticEnvironment environment) {
     }
 
     private record SourceSnapshot(
             Vec3 position,
             float yaw,
             float pitch,
+            boolean underwater,
             Vec3 listenerPosition,
             AcousticPath path,
             long computedAtMillis,
