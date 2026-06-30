@@ -10,7 +10,12 @@ public final class StandaloneVoiceServerMain {
     private StandaloneVoiceServerMain() {}
 
     public static void main(String[] args) {
-        Path configPath = Paths.get("config", "minevoice-server.properties");
+        Path configPath;
+        if (args.length > 0) {
+            configPath = Paths.get(args[0]);
+        } else {
+            configPath = Paths.get("config", "minevoice-server.properties");
+        }
         CoreVoiceServerConfig config = new CoreVoiceServerConfigLoader().load(configPath);
         CoreVoiceServer server = new CoreVoiceServer(config);
         server.start();
