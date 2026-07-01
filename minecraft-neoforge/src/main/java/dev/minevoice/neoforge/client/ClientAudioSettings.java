@@ -33,7 +33,7 @@ public record ClientAudioSettings(
             VoiceActivationMode.VOICE_ACTIVITY, 0.05F,
             VoiceActivationMode.PUSH_TO_TALK, 0.05F,
             true, null, null,
-            false, false, true, true, 24, DebugInfoLevel.OFF, 0, 0xFFE040, 0, 0, true
+            false, false, true, true, 24, DebugInfoLevel.OFF, 0, 0x55FF55, 0, 0, true
         );
     }
 

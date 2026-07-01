@@ -56,9 +56,14 @@ public final class MineVoiceHudOverlay {
 
     
     private static void setIconColor(GuiGraphics graphics, VoiceHudState state, ClientAudioSettings settings, VoicePlayerDirectory directory, VoiceSpeakerTracker speakers) {
+        java.util.UUID myId = Minecraft.getInstance().player.getUUID();
+        dev.minevoice.neoforge.network.VoiceRosterEntry myEntry = directory.get(myId);
+        java.util.UUID myGroupId = myEntry != null ? myEntry.groupId() : null;
+
         if (state.transmitting()) {
             if (state.groupPushToTalkDown()) {
-                setColorFromInt(graphics, settings.groupMemberColor());
+                int color = (myEntry != null && myGroupId != null) ? myEntry.groupColor() : settings.groupMemberColor();
+                setColorFromInt(graphics, color);
             } else {
                 graphics.setColor(0.7f, 0.7f, 0.7f, 1.0f);
             }
@@ -73,10 +78,6 @@ public final class MineVoiceHudOverlay {
 
         boolean teamSpeaking = false;
         int teamColor = 0;
-        
-        java.util.UUID myId = Minecraft.getInstance().player.getUUID();
-        dev.minevoice.neoforge.network.VoiceRosterEntry myEntry = directory.get(myId);
-        java.util.UUID myGroupId = myEntry != null ? myEntry.groupId() : null;
 
         for (java.util.UUID playerId : active) {
             dev.minevoice.neoforge.network.VoiceRosterEntry entry = directory.get(playerId);
