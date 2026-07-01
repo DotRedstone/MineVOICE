@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class MinecraftVoiceSpatializer implements VoiceSpatializer, VoiceSpatialSceneProvider {
     private static final double FULL_VOLUME_DISTANCE = 4.0D;
-    private static final double MAX_PROXIMITY_DISTANCE = 48.0D;
+    private static final double MAX_PROXIMITY_DISTANCE = 64.0D;
     private static final double SOURCE_POSITION_EPSILON_SQUARED = 0.0625D;
     private static final int MAX_REFLECTION_PROBES_PER_SOURCE = 8;
     private static final String BACKEND_NAME = "material-raytrace";
