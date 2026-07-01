@@ -171,7 +171,7 @@ public final class MineVoiceSettingsScreen extends Screen {
             button.setMessage(hudIconSizeMessage());
         });
         addButton(outOfSightIndicatorMessage(), left, y + 63, contentWidth, ROW_HEIGHT, button -> {
-            model.setOutOfSightIndicatorMode((model.outOfSightIndicatorMode() + 1) % 3);
+            model.setOutOfSightIndicatorMode((model.outOfSightIndicatorMode() + 1) % 2);
             button.setMessage(outOfSightIndicatorMessage());
         });
         addButton(occludedIndicatorMessage(), left, y + 84, contentWidth, ROW_HEIGHT, button -> {
@@ -325,7 +325,6 @@ public final class MineVoiceSettingsScreen extends Screen {
     private Component outOfSightIndicatorMessage() {
         String key = switch (model.outOfSightIndicatorMode()) {
             case 1 -> "screen.minevoice.indicator.avatar";
-            case 2 -> "screen.minevoice.indicator.arrow";
             default -> "screen.minevoice.indicator.none";
         };
         return Component.translatable("screen.minevoice.out_of_sight_indicator").append(": ").append(Component.translatable(key));

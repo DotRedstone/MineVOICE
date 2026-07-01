@@ -86,7 +86,7 @@ public final class ProximityEdgeIndicators {
         float centerX = screenWidth / 2.0f;
         float centerY = screenHeight / 2.0f;
         
-        float margin = 20.0f;
+        float margin = 5.0f;
         float halfW = centerX - margin;
         float halfH = centerY - margin;
 
@@ -102,6 +102,12 @@ public final class ProximityEdgeIndicators {
 
         for (UUID speakerId : activeSpeakers) {
             if (speakerId.equals(minecraft.player.getUUID())) {
+                continue;
+            }
+
+            if (myGroupId == null || directory == null) continue;
+            dev.minevoice.neoforge.network.VoiceRosterEntry speakerEntry = directory.get(speakerId);
+            if (speakerEntry == null || !myGroupId.equals(speakerEntry.groupId())) {
                 continue;
             }
 
@@ -189,35 +195,30 @@ public final class ProximityEdgeIndicators {
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
 
-            if (clampToEdge && outOfSightMode == 2) {
-                // Draw Arrow
-                drawTriangle(graphics, drawX, drawY, angle, size, color, opacity);
-            } else {
-                // Draw Avatar
-                ResourceLocation texture = DefaultPlayerSkin.get(speakerId).texture();
-                if (minecraft.getConnection() != null) {
-                    PlayerInfo playerInfo = minecraft.getConnection().getPlayerInfo(speakerId);
-                    if (playerInfo != null) {
-                        texture = playerInfo.getSkin().texture();
-                    }
+            // Draw Avatar
+            ResourceLocation texture = DefaultPlayerSkin.get(speakerId).texture();
+            if (minecraft.getConnection() != null) {
+                PlayerInfo playerInfo = minecraft.getConnection().getPlayerInfo(speakerId);
+                if (playerInfo != null) {
+                    texture = playerInfo.getSkin().texture();
                 }
-
-                // Draw Border
-                float r = ((color >> 16) & 0xFF) / 255.0f;
-                float g = ((color >> 8) & 0xFF) / 255.0f;
-                float b = (color & 0xFF) / 255.0f;
-                graphics.fill((int)(drawX - size / 2.0f - 1), (int)(drawY - size / 2.0f - 1), (int)(drawX + size / 2.0f + 1), (int)(drawY + size / 2.0f + 1), 0);
-                graphics.fill((int)(drawX - size / 2.0f - 1), (int)(drawY - size / 2.0f - 1), (int)(drawX + size / 2.0f + 1), (int)(drawY + size / 2.0f + 1), ((int)(opacity * 255) << 24) | color);
-
-                graphics.setColor(1.0f, 1.0f, 1.0f, opacity);
-                net.minecraft.client.gui.components.PlayerFaceRenderer.draw(
-                        graphics,
-                        texture,
-                        (int) (drawX - size / 2.0f),
-                        (int) (drawY - size / 2.0f),
-                        (int) size
-                );
             }
+
+            // Draw Border
+            float r = ((color >> 16) & 0xFF) / 255.0f;
+            float g = ((color >> 8) & 0xFF) / 255.0f;
+            float b = (color & 0xFF) / 255.0f;
+            graphics.fill((int)(drawX - size / 2.0f - 1), (int)(drawY - size / 2.0f - 1), (int)(drawX + size / 2.0f + 1), (int)(drawY + size / 2.0f + 1), 0);
+            graphics.fill((int)(drawX - size / 2.0f - 1), (int)(drawY - size / 2.0f - 1), (int)(drawX + size / 2.0f + 1), (int)(drawY + size / 2.0f + 1), ((int)(opacity * 255) << 24) | color);
+
+            graphics.setColor(1.0f, 1.0f, 1.0f, opacity);
+            net.minecraft.client.gui.components.PlayerFaceRenderer.draw(
+                    graphics,
+                    texture,
+                    (int) (drawX - size / 2.0f),
+                    (int) (drawY - size / 2.0f),
+                    (int) size
+            );
             
             graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
             RenderSystem.disableBlend();
